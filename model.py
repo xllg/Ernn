@@ -1,4 +1,3 @@
-
 import torch
 import logging
 import torch.optim as optim
@@ -11,6 +10,7 @@ from .rnn_reader import RnnDocReader
 
 logger = logging.getLogger(__name__)
 
+
 class DocReader(object):
     """High level model that handles initializing the underlying network
     architecture,saving,updating examples, and predicting examples.
@@ -20,8 +20,8 @@ class DocReader(object):
     # Initialization
     # ----------------------------------------------------------------------------
 
-    def __init__(self,args,word_dict,feature_dict,
-                 state_dict = None,normalize = True):
+    def __init__(self, args, word_dict, feature_dict,
+                 state_dict=None, normalize=True):
         # Book-keeping.
         self.args = args
         self.word_dict = word_dict
@@ -35,20 +35,20 @@ class DocReader(object):
         # Building network. If normalize is false,scores are not nomalized
         # 0-1 per paragraph (no softmax)
         if args.model_type == 'rnn':
-            self.network = RnnDocReader(args,normalize)
+            self.network = RnnDocReader(args, normalize)
         else:
             raise RuntimeError('Unsupported model: %s' % args.model_type)
 
         # Load saved state
         if state_dict:
             # Load buffer separately
+            logger.info("!!!!!!!!! Having state_dict")
             if 'fixed_embedding' in state_dict:
                 fixed_embedding = state_dict.pop('fixed_embedding')
                 self.network.load_state_dict(state_dict)
                 self.network.register_buffer('fixed_embedding', fixed_embedding)
             else:
                 self.network.load_state_dict(state_dict)
-
 
     def load_embeddings(self, words, embedding_file):
         """Load pretrained embeddings for a given list of words, if they exist.
@@ -68,7 +68,7 @@ class DocReader(object):
         with open(embedding_file) as f:
             for line in f:
                 parsed = line.rstrip().split(' ')
-                assert(len(parsed) == embedding.size(1) + 1)
+                assert (len(parsed) == embedding.size(1) + 1)
                 w = self.word_dict.normalize(parsed[0])
                 if w in words:
                     vec = torch.Tensor([float(i) for i in parsed[1:]])
@@ -177,10 +177,10 @@ class DocReader(object):
             target_e = Variable(ex[6])
 
         # Run forward
-        score_s, score_e = self.network(*inputs) # batch_size * doc_max_len
+        score_s, score_e = self.network(*inputs)  # batch_size * doc_max_len
 
         # Compute loss and accuracies
-        loss = F.nll_loss(score_s, target_s) + F.nll_loss(score_e, target_e)  #Negative log Lokelihood
+        loss = F.nll_loss(score_s, target_s) + F.nll_loss(score_e, target_e)  # Negative log Lokelihood
 
         # Clear gradients and run backward
         self.optimizer.zero_grad()
@@ -283,18 +283,18 @@ class DocReader(object):
         max_len = max_len or score_s.size(1)
         for i in range(score_s.size(0)):
             # Outer product of scores to get full p_s * p_e matrix
-            scores = torch.ger(score_s[i], score_e[i]) # 计算两个向量的张量积
+            scores = torch.ger(score_s[i], score_e[i])  # 计算两个向量的张量积
 
             # Zero out negative length and over-length span scores
             scores.triu_().tril_(max_len - 1)  # Upper(Lower) triangle of an arrary
 
             # Take argmax or top n
             scores = scores.numpy()
-            score_flat = scores.flatten() # s copy of the arrary collapsed into one dimension
+            score_flat = scores.flatten()  # s copy of the arrary collapsed into one dimension
             if top_n == 1:
-                idx_sort = [np.argmax(score_flat)] # return the indices of the maximum values along an axis
+                idx_sort = [np.argmax(score_flat)]  # return the indices of the maximum values along an axis
             elif len(score_flat) < top_n:
-                idx_sort = np.argsort(-score_flat) # return the indices that would sort an array
+                idx_sort = np.argsort(-score_flat)  # return the indices that would sort an array
             else:
                 idx = np.argpartition(-score_flat, top_n)[0:top_n]
                 idx_sort = idx[np.argsort(-score_flat[idx])]

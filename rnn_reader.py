@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-import layers
+from . import layers
 # ------------------------------------------------------------
 # Network
 # ------------------------------------------------------------
