@@ -4,7 +4,7 @@ import logging
 import string
 import regex as re
 
-from data import Dictionary
+from Ernn.data import Dictionary
 from collections import Counter
 
 logger = logging.getLogger(__name__)
