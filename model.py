@@ -6,7 +6,7 @@ import copy
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-from .rnn_reader import RnnDocReader
+from rnn_reader import RnnDocReader
 
 logger = logging.getLogger(__name__)
 

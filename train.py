@@ -3,13 +3,13 @@ import logging
 import os
 import sys
 from pathlib import PosixPath
-from Ernn import config, utils, vector, data
+import config, utils, vector, data
 import subprocess
 import numpy as np
 import json
 import torch
 
-from Ernn.model import DocReader
+from model import DocReader
 
 if sys.version_info < (3, 5):
     raise RuntimeError('ErnnReader_DATA supports Python 3.5 or higher.')
