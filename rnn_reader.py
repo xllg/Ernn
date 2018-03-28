@@ -21,6 +21,11 @@ class RnnDocReader(nn.Module):
                                       args.embedding_dim,
                                       padding_idx=0)
 
+        # Char embedding (+1 forpadding)
+        self.char_embedding = nn.Embedding(args.char_size,
+                                      args.embedding_dim,
+                                      padding_idx=0)
+
         # Projection for attention weighted question
         if args.use_qemb:
             self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
@@ -78,8 +83,8 @@ class RnnDocReader(nn.Module):
             question_hidden_size,
             normalize=normalize,
         )
-
-    def forward(self, x1, x1_f, x1_mask, x2, x2_mask):
+    # return x1, x1_f, x1_mask, x1_char, x1_char_mask, x2, x2_mask, x2_char, x2_char_mask, y_s, y_e, ids
+    def forward(self, x1, x1_f, x1_mask, x1_char, x1_char_mask, x2, x2_mask, x2_char, x2_char_mask):
         """Inputs:
         x1 = document word indices             [batch * len_d]
         x1_f = document word features indices  [batch * len_d * nfeat]
@@ -90,6 +95,9 @@ class RnnDocReader(nn.Module):
         # Embed both document and question
         x1_emb = self.embedding(x1)
         x2_emb = self.embedding(x2)
+
+        x1_char_emb = self.char_embedding(x1_char)
+        x2_char_emb = self.char_embedding(x2_char)
 
         # Dropout on embeddings
         if self.args.dropout_emb > 0:

@@ -20,7 +20,7 @@ class DocReader(object):
     # Initialization
     # ----------------------------------------------------------------------------
 
-    def __init__(self, args, word_dict, feature_dict,
+    def __init__(self, args, word_dict, feature_dict, char_dict,
                  state_dict=None, normalize=True):
         # Book-keeping.
         self.args = args
@@ -28,6 +28,8 @@ class DocReader(object):
         self.args.vocab_size = len(word_dict)
         self.feature_dict = feature_dict
         self.args.num_features = len(feature_dict)
+        self.char_dict = char_dict
+        self.args.char_size = len(char_dict)
         self.updates = 0
         self.use_cuda = False
         self.parallel = False
@@ -87,6 +89,44 @@ class DocReader(object):
 
         logger.info('Loaded %d embeddings (%.2f%%)' %
                     (len(vec_counts), 100 * len(vec_counts) / len(words)))
+
+    def load_char_embeddings(self, chars, embedding_file):
+        """Load pretrained embeddings for a given list of words, if they exist.
+
+        Args:
+            words: iterable of tokens. Only those that are indexed in the
+              dictionary are kept.
+            embedding_file: path to text file of embeddings, space separated.
+        """
+        chars = {c for c in chars if c in self.char_dict}
+        logger.info('Loading pre-trained char embeddings for %d chars from %s' %
+                    (len(chars), embedding_file))
+        embedding = self.network.char_embedding.weight.data
+
+        # When normalized, some words are duplicated. (Average the embeddings).
+        vec_counts = {}
+        with open(embedding_file) as f:
+            for line in f:
+                parsed = line.rstrip().split(' ')
+                assert (len(parsed) == embedding.size(1) + 1)
+                w = self.char_dict.normalize(parsed[0])
+                if w in chars:
+                    vec = torch.Tensor([float(i) for i in parsed[1:]])
+                    if w not in vec_counts:
+                        vec_counts[w] = 1
+                        embedding[self.char_dict[w]].copy_(vec)
+                    else:
+                        logging.warning(
+                            'WARN: Duplicate char embedding found for %s' % w
+                        )
+                        vec_counts[w] = vec_counts[w] + 1
+                        embedding[self.char_dict[w]].add_(vec)
+
+        for w, c in vec_counts.items():
+            embedding[self.char_dict[w]].div_(c)
+
+        logger.info('Loaded %d char embeddings (%.2f%%)' %
+                    (len(vec_counts), 100 * len(vec_counts) / len(chars)))
 
     def tune_embeddings(self, words):
         """

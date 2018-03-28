@@ -95,6 +95,29 @@ def load_words(args, examples):
         _insert(ex['document'])
     return words
 
+def load_char_words(args, examples):
+    """Iterate and index all the words in examples (documents + questions)."""
+    def _insert(iterable):
+        for word in iterable:
+            for char in word:
+                char = Dictionary.normalize(char)
+                if valid_words and char not in valid_words:
+                    continue
+                charts.add(char)
+
+    if args.restrict_vocab and args.char_embedding_file:
+        logger.info('Restricting to charts in %s' % args.char_embedding_file)
+        valid_words = index_embedding_words(args.char_embedding_file)
+        logger.info('Num charts in set = %d' % len(valid_words))
+    else:
+        valid_words = None
+
+    charts = set()
+    for ex in examples:
+        _insert(ex['question'])
+        _insert(ex['document'])
+    return charts
+
 def build_word_dict(args, examples):
     """Return a dictionary from question and document words in
     provided examples.
@@ -103,6 +126,15 @@ def build_word_dict(args, examples):
     for w in load_words(args, examples):
         word_dict.add(w)
     return word_dict
+
+def build_char_dict(args, examples):
+    """Return a character dictionary from question and document words in
+    provided examples.
+    """
+    char_dict = Dictionary()
+    for w in load_char_words(args, examples):
+        char_dict.add(w)
+    return char_dict
 
 def top_question_words(args, examples, word_dict):
     """Count and return the most common question words in provided examples."""

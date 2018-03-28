@@ -79,6 +79,9 @@ def add_train_args(parser):
     files.add_argument('--embedding-file', type=str,
                        default='glove.840B.300d.txt',
                        help='Space-separated pretrained embeddings file')
+    files.add_argument('--char-embedding-file', type=str,
+                       default='glove.840B.300d-char.txt',
+                       help='Space-separated pretrained char-embeddings file')
 
     # Saving + loading
     save_load = parser.add_argument_group('Saving/Loading')
@@ -125,6 +128,10 @@ def set_defaults(args):
         args.embedding_file = os.path.join(args.embed_dir, args.embedding_file)
         if not os.path.isfile(args.embedding_file):
             raise IOError('No such file: %s' % args.embedding_file)
+    if args.char_embedding_file:
+        args.char_embedding_file = os.path.join(args.embed_dir, args.char_embedding_file)
+        if not os.path.isfile(args.char_embedding_file):
+            raise IOError('No such file: %s' % args.char_embedding_file)
 
     # Set model directory
     subprocess.run(['mkdir', '-p', args.model_dir]) # 运行命令 mkdir -p /home/xllg/PycharmProjects/ErnnReader/data/outputs 参数p代表parents，表示递归创建目录
@@ -181,12 +188,20 @@ def init_from_scratch(args, train_exs, dev_exs):
     word_dict = utils.build_word_dict(args, train_exs + dev_exs)
     logger.info('Num words = %d' % len(word_dict))
 
+    # Build a character dictionary from the data questions + words (train/dev splits)
+    logger.info('-' * 100)
+    logger.info('Build character dictionary')
+    char_dict = utils.build_char_dict(args, train_exs + dev_exs)
+    logger.info('Num char = %d' % len(char_dict))
+
     # Initialize model
-    model = DocReader(config.get_model_args(args), word_dict, feature_dict)
+    model = DocReader(config.get_model_args(args), word_dict, feature_dict, char_dict)
 
     # Load pretrained embeddings for words in dictionary
     if args.embedding_file:
         model.load_embeddings(word_dict.tokens(), args.embedding_file)
+    if args.char_embedding_file:
+        model.load_char_embeddings(char_dict.tokens(), args.char_embedding_file)
 
     return model
 
