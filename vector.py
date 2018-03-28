@@ -82,7 +82,7 @@ def batchify(batch):
     :param batch:
     :return:
     """
-    NUM_INPUTS = 3
+    NUM_INPUTS = 5
     NUM_TARGETS = 2
     NUM_EXTRA = 1
 
