@@ -208,13 +208,13 @@ class DocReader(object):
         # Transfer to GPU
         if self.use_cuda:
             inputs = [e if e is None else Variable(e.cuda(async=True))
-                      for e in ex[:9]]
-            target_s = Variable(ex[9].cuda(async=True))
-            target_e = Variable(ex[10].cuda(async=True))
+                      for e in ex[:7]]
+            target_s = Variable(ex[7].cuda(async=True))
+            target_e = Variable(ex[8].cuda(async=True))
         else:
             inputs = [e if e is None else Variable(e) for e in ex[:5]]
-            target_s = Variable(ex[9])
-            target_e = Variable(ex[10])
+            target_s = Variable(ex[7])
+            target_e = Variable(ex[8])
 
         # Run forward
         score_s, score_e = self.network(*inputs)  # batch_size * doc_max_len
@@ -283,10 +283,10 @@ class DocReader(object):
         # Teansfer to GPU
         if self.use_cuda:
             inputs = [e if e is None else Variable(e.cuda(async=True), volatile=True)
-                      for e in ex[:5]]
+                      for e in ex[:7]]
         else:
             inputs = [e if e is None else Variable(e, volatile=True)
-                      for e in ex[:5]]
+                      for e in ex[:7]]
 
         # Run forward
         score_s, score_e = self.network(*inputs)

@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import layers
+from torch.autograd import Variable
 # ------------------------------------------------------------
 # Network
 # ------------------------------------------------------------
@@ -30,8 +31,8 @@ class RnnDocReader(nn.Module):
         if args.use_qemb:
             self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
 
-        # Input size to RNN: word emb + question emb +manual features
-        doc_input_size = args.embedding_dim + args.num_features
+        # Input size to RNN: word emb + question emb +manual features + char emb
+        doc_input_size = args.embedding_dim * 2 + args.num_features
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
@@ -83,8 +84,8 @@ class RnnDocReader(nn.Module):
             question_hidden_size,
             normalize=normalize,
         )
-    # return x1, x1_f, x1_mask, x1_char, x1_char_mask, x2, x2_mask, x2_char, x2_char_mask, y_s, y_e, ids
-    def forward(self, x1, x1_f, x1_mask, x1_char, x1_char_mask, x2, x2_mask, x2_char, x2_char_mask):
+
+    def forward(self, x1, x1_f, x1_mask, x1_char, x2, x2_mask, x2_char):
         """Inputs:
         x1 = document word indices             [batch * len_d]
         x1_f = document word features indices  [batch * len_d * nfeat]
@@ -96,8 +97,9 @@ class RnnDocReader(nn.Module):
         x1_emb = self.embedding(x1)
         x2_emb = self.embedding(x2)
 
-        x1_char_emb = self.char_embedding(x1_char)
-        x2_char_emb = self.char_embedding(x2_char)
+
+        x1_char_emb = x1_char.bmm(Variable(self.char_embedding.weight.data.unsqueeze(0).expand(x1_char.size(0),x1_char.size(2),self.args.embedding_dim)))
+        x2_char_emb = x2_char.bmm(Variable(self.char_embedding.weight.data.unsqueeze(0).expand(x2_char.size(0),x2_char.size(2),self.args.embedding_dim)))
 
         # Dropout on embeddings
         if self.args.dropout_emb > 0:
@@ -105,9 +107,23 @@ class RnnDocReader(nn.Module):
                                            training=self.training)
             x2_emb = nn.functional.dropout(x2_emb, p=self.args.dropout_emb,
                                            training=self.training)
+            x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
+                                           training=self.training)
+            x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
+                                           training=self.training)
+
+
+
+        # if self.args.cuda:
+        #     v_t = Variable(torch.randn(x1_emb.size(0), x1_emb.size(1), x1_char_emb.size(1)).cuda(async=True))
+        # else:
+        #     v_t = Variable(torch.randn(x1_emb.size(0), x1_emb.size(1), x1_char_emb.size(1)))
+
+        # x1_char_emb = v_t.bmm(x1_char_emb)
 
         # Form document encoding inputs
         drnn_input = [x1_emb]
+        drnn_input.append(x1_char_emb)
 
         # Add attention-weighted question representation
         if self.args.use_qemb:
@@ -120,6 +136,7 @@ class RnnDocReader(nn.Module):
 
         # Encode document with RNN
         doc_hiddens = self.doc_rnn(torch.cat(drnn_input, 2), x1_mask)
+        # char_hiddens = self.char_rnn(x1_char_emb, x1_char_mask)
 
         # Encode question with RNN + merge hiddens
         question_hiddens = self.question_rnn(x2_emb, x2_mask)
