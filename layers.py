@@ -199,6 +199,14 @@ class SeqAttnMatch(nn.Module):
         matched_seq = alpha.bmm(y)
         return matched_seq
 
+class CharLinear(nn.Module):
+    def __init__(self, input_size):
+        super(CharLinear, self).__init__()
+        self.linear = nn.Linear(input_size, 1)
+    def forward(self, x):
+        x_proj = self.linear(x.transpose(2, 1))
+        x_proj = F.relu(x_proj)
+        return x_proj.squeeze(2)
 
 class BilinearSeqAttn(nn.Module):
     """A bilinear attention layer over a sequence X w.r.t y:

@@ -36,6 +36,8 @@ class RnnDocReader(nn.Module):
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
+        self.char_doc = layers.CharLinear(args.char_size)
+
         # RNN document encoder
         self.doc_rnn = layers.StackedBRNN(
             input_size=doc_input_size,
@@ -97,9 +99,7 @@ class RnnDocReader(nn.Module):
         x1_emb = self.embedding(x1)
         x2_emb = self.embedding(x2)
 
-
-        x1_char_emb = x1_char.bmm(Variable(self.char_embedding.weight.data.unsqueeze(0).expand(x1_char.size(0),x1_char.size(2),self.args.embedding_dim)))
-        x2_char_emb = x2_char.bmm(Variable(self.char_embedding.weight.data.unsqueeze(0).expand(x2_char.size(0),x2_char.size(2),self.args.embedding_dim)))
+        x1_char_emb = self.char_embedding(x1_char.view(-1, self.args.char_size))
 
         # Dropout on embeddings
         if self.args.dropout_emb > 0:
@@ -109,17 +109,10 @@ class RnnDocReader(nn.Module):
                                            training=self.training)
             x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
                                            training=self.training)
-            x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
-                                           training=self.training)
+            # x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
+            #                                training=self.training)
 
-
-
-        # if self.args.cuda:
-        #     v_t = Variable(torch.randn(x1_emb.size(0), x1_emb.size(1), x1_char_emb.size(1)).cuda(async=True))
-        # else:
-        #     v_t = Variable(torch.randn(x1_emb.size(0), x1_emb.size(1), x1_char_emb.size(1)))
-
-        # x1_char_emb = v_t.bmm(x1_char_emb)
+        x1_char_emb = self.char_doc(x1_char_emb).view(x1_emb.size())
 
         # Form document encoding inputs
         drnn_input = [x1_emb]

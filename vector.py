@@ -107,7 +107,7 @@ def batchify(batch):
         x1_f = None
     else:
         x1_f = torch.zeros(len(docs), max_length, features[0].size(1))
-    x1_char = torch.zeros(len(docs), max_length, char_docs[0].size(1))
+    x1_char = torch.LongTensor(len(docs), max_length, char_docs[0].size(1)).zero_()
     for i, d in enumerate(docs):
         x1[i, :d.size(0)].copy_(d)
         x1_mask[i, :d.size(0)].fill_(0)
@@ -119,7 +119,7 @@ def batchify(batch):
     max_length = max([q.size(0) for q in questions])
     x2 = torch.LongTensor(len(questions), max_length).zero_()
     x2_mask = torch.ByteTensor(len(questions), max_length).fill_(1)
-    x2_char = torch.zeros(len(questions), max_length, char_questions[0].size(1))
+    x2_char = torch.LongTensor(len(questions), max_length, char_questions[0].size(1)).zero_()
     for i, q in enumerate(questions):
         x2[i, :q.size(0)].copy_(q)
         x2_mask[i, :q.size(0)].fill_(0)
