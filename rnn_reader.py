@@ -36,7 +36,7 @@ class RnnDocReader(nn.Module):
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
-        self.char_doc = layers.CharLinear(args.char_size)
+        self.char_doc = layers.CharLinear(args.max_clen)
 
         # RNN document encoder
         self.doc_rnn = layers.StackedBRNN(
@@ -99,7 +99,7 @@ class RnnDocReader(nn.Module):
         x1_emb = self.embedding(x1)
         x2_emb = self.embedding(x2)
 
-        x1_char_emb = self.char_embedding(x1_char.view(-1, self.args.char_size))
+        x1_char_emb = self.char_embedding(x1_char.view(-1, self.args.max_clen))
 
         # Dropout on embeddings
         if self.args.dropout_emb > 0:

@@ -127,6 +127,9 @@ def build_word_dict(args, examples):
         word_dict.add(w)
     return word_dict
 
+def max_word_len(examples):
+    return max([len(w) for ex in examples for w in (ex['question'] + ex['document'])])
+
 def build_char_dict(args, examples):
     """Return a character dictionary from question and document words in
     provided examples.

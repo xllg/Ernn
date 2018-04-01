@@ -52,9 +52,9 @@ def add_train_args(parser):
                                'operations (for reproducibility)'))
     runtime.add_argument('--num-epochs', type=int, default=40,
                          help='Train data iterations')
-    runtime.add_argument('--batch-size', type=int, default=28,
+    runtime.add_argument('--batch-size', type=int, default=30,
                          help='Batch size for training')
-    runtime.add_argument('--test-batch-size', type=int, default=128,
+    runtime.add_argument('--test-batch-size', type=int, default=64,
                          help='Batch size during validation/testing')
 
     # Files
@@ -187,6 +187,7 @@ def init_from_scratch(args, train_exs, dev_exs):
     logger.info('Build dictionary')
     word_dict = utils.build_word_dict(args, train_exs + dev_exs)
     logger.info('Num words = %d' % len(word_dict))
+    args.max_clen = utils.max_word_len(train_exs + dev_exs)
 
     # Build a character dictionary from the data questions + words (train/dev splits)
     logger.info('-' * 100)
