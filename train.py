@@ -45,14 +45,14 @@ def add_train_args(parser):
                          help='Run on a specific GPU')
     runtime.add_argument('--data-workers', type=int, default=3,
                          help='Number of subprocesses for data loading')
-    runtime.add_argument('--parallel', type='bool', default=False,
+    runtime.add_argument('--parallel', type='bool', default=True,
                          help='Use DataParallel on all available GPUs')
     runtime.add_argument('--random-seed', type=int, default=1013,
                          help=('Random seed for all numpy/torch/cuda '
                                'operations (for reproducibility)'))
     runtime.add_argument('--num-epochs', type=int, default=40,
                          help='Train data iterations')
-    runtime.add_argument('--batch-size', type=int, default=32,
+    runtime.add_argument('--batch-size', type=int, default=28,
                          help='Batch size for training')
     runtime.add_argument('--test-batch-size', type=int, default=128,
                          help='Batch size during validation/testing')
