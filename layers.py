@@ -199,11 +199,13 @@ class SeqAttnMatch(nn.Module):
         matched_seq = alpha.bmm(y)
         return matched_seq
 
-class CharLinear(nn.Module):
-    def __init__(self, input_size):
-        super(CharLinear, self).__init__()
-        self.linear = nn.Linear(input_size, 1)
+class CharNN(nn.Module):
+    def __init__(self, input_size, hidden_size, max_clen):
+        super(CharNN, self).__init__()
+        self.lstm = nn.LSTM(input_size, hidden_size, bidirectional=True)
+        self.linear = nn.Linear(max_clen, 1)
     def forward(self, x):
+        x = self.lstm(x)[0]
         x_proj = self.linear(x.transpose(2, 1))
         x_proj = F.relu(x_proj)
         return x_proj.squeeze(2)
