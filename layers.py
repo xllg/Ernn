@@ -199,36 +199,6 @@ class SeqAttnMatch(nn.Module):
         matched_seq = alpha.bmm(y)
         return matched_seq
 
-class LinearGated(nn.Module):
-    def __init__(self,input_size):
-        super(LinearGated,self).__init__()
-        self.linear = nn.Linear(input_size,input_size)
-        self.gate = nn.Linear(input_size*2,input_size*2)
-    def forward(self,x,y,y_mask): # y_mask
-        x_proj = self.linear(x.view(-1, x.size(2))).view(x.size())
-        x_proj = F.relu(x_proj)
-        y_proj = self.linear(y.view(-1, y.size(2))).view(y.size())
-        y_proj = F.relu(y_proj)
-
-        # Compute scores
-        scores = x_proj.bmm(y_proj.transpose(2, 1))  # 32 * 84 *13
-
-        # Mask padding
-        y_mask = y_mask.unsqueeze(1).expand(scores.size())
-        scores.data.masked_fill_(y_mask.data, -float('inf'))
-
-        # Normalize with softmax
-        alpha_flat = F.softmax(scores.view(-1, y.size(1)))
-        alpha = alpha_flat.view(-1, x.size(1), y.size(1))
-
-        # Take weighted average
-        matched_seq = alpha.bmm(y)  # 32 * 84 *768
-
-        inputs = torch.cat([x,matched_seq],x.dim()-1)
-        inputs = inputs * F.sigmoid(self.gate(inputs))
-
-        return inputs
-
 class BilinearSeqAttn(nn.Module):
     """A bilinear attention layer over a sequence X w.r.t y:
 
