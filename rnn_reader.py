@@ -36,7 +36,7 @@ class RnnDocReader(nn.Module):
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
-        self.char_doc = layers.CharNN(args.embedding_dim, args.embedding_dim, args.max_clen)
+        self.char_doc = layers.CharNN(args.embedding_dim, 150, args.max_clen)
 
         # RNN document encoder
         self.doc_rnn = layers.StackedBRNN(

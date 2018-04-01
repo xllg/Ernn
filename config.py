@@ -29,7 +29,7 @@ def add_model_args(parser):
                        help='Model architecture type')
     model.add_argument('--embedding-dim', type=int, default=300,
                        help='Embedding size if embedding_file is not given')
-    model.add_argument('--hidden-size', type=int, default=256,
+    model.add_argument('--hidden-size', type=int, default=128,
                        help='Hidden size of RNN units')
     model.add_argument('--doc-layers', type=int, default=3,
                        help='Number of encoding layers for document')
