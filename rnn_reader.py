@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-import layers
+from Ernn import layers
 from torch.autograd import Variable
 # ------------------------------------------------------------
 # Network
