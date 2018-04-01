@@ -67,6 +67,18 @@ class RnnDocReader(nn.Module):
         if args.question_merge == 'self_attn':
             self.self_attn = layers.LinearSeqAttn(question_hidden_size)
 
+        self.qes_gated = layers.LinearGated(doc_hidden_size)
+        self.gated_rnn = layers.StackedBRNN(
+            input_size=doc_hidden_size * 2,
+            hidden_size=args.hidden_size,
+            num_layers=args.doc_layers,  # 3
+            dropout_rate=args.dropout_rnn,
+            dropout_output=args.dropout_rnn_output,
+            concat_layers=args.concat_rnn_layers,
+            rnn_type=self.RNN_TYPES[args.rnn_type],
+            padding=args.rnn_padding,
+        )
+
         # Bilinear attention for span start/end
         self.start_attn = layers.BilinearSeqAttn(
             doc_hidden_size,
@@ -121,7 +133,10 @@ class RnnDocReader(nn.Module):
             q_merge_weights = self.self_attn(question_hiddens, x2_mask)
         question_hidden = layers.weighted_avg(question_hiddens, q_merge_weights)
 
+        gated_ct = self.qes_gated(doc_hiddens, question_hiddens, x2_mask)  # y_mask
+        gated_vp = self.gated_rnn(gated_ct, x1_mask)
+
         # Predict start and end positions
-        start_scores = self.start_attn(doc_hiddens, question_hidden, x1_mask)
-        end_scores = self.end_attn(doc_hiddens, question_hidden, x1_mask)
+        start_scores = self.start_attn(gated_vp, question_hidden, x1_mask)
+        end_scores = self.end_attn(gated_vp, question_hidden, x1_mask)
         return start_scores, end_scores
