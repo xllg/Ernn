@@ -67,6 +67,18 @@ class RnnDocReader(nn.Module):
         if args.question_merge == 'self_attn':
             self.self_attn = layers.LinearSeqAttn(question_hidden_size)
 
+        self.qes_gated = layers.LinearGated(doc_hidden_size)
+        self.gated_rnn = layers.StackedBRNN(
+            input_size=doc_hidden_size * 2,
+            hidden_size=args.hidden_size,
+            num_layers=args.doc_layers,  # 3
+            dropout_rate=args.dropout_rnn,
+            dropout_output=args.dropout_rnn_output,
+            concat_layers=args.concat_rnn_layers,
+            rnn_type=self.RNN_TYPES[args.rnn_type],
+            padding=args.rnn_padding,
+        )
+
         # Bilinear attention for span start/end
         self.start_attn = layers.BilinearSeqAttn(
             doc_hidden_size,
