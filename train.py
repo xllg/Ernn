@@ -54,7 +54,7 @@ def add_train_args(parser):
                          help='Train data iterations')
     runtime.add_argument('--batch-size', type=int, default=32,
                          help='Batch size for training')
-    runtime.add_argument('--test-batch-size', type=int, default=64,
+    runtime.add_argument('--test-batch-size', type=int, default=128,
                          help='Batch size during validation/testing')
 
     # Files
