@@ -100,16 +100,6 @@ class RnnDocReader(nn.Module):
         x2_emb = self.embedding(x2)
 
         x1_char_emb = self.char_embedding(x1_char.view(-1, self.args.max_clen))
-        # for c in x1_char:  # batch_size
-        #     count = 0
-        #     temp = Variable(torch.FloatTensor(1, 300).zero_().cuda())
-        #     for ind in x1_char[0]:  # per sentence char
-        #         if ind.data.cpu().numpy() == 0:
-        #             count += 0
-        #         else:
-        #             count += 1
-        #             temp += self.char_embedding(ind)
-        #     temp = temp.div(count)
 
         # Dropout on embeddings
         if self.args.dropout_emb > 0:
