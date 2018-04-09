@@ -17,14 +17,14 @@ def vectorize(ex, model, single_answer=False):
     question = torch.LongTensor([word_dict[w] for w in ex['question']])
 
     # Index character
-    char_doc = torch.zeros(len(ex['document']), args.max_clen)
-    char_qes = torch.zeros(len(ex['question']), args.max_clen)
+    char_doc = torch.zeros(len(ex['document']), len(char_dict))
+    char_qes = torch.zeros(len(ex['question']), len(char_dict))
     for i, w in enumerate(ex['document']):
         for j, c in enumerate(w):
-            char_doc[i][j] = (char_dict[c])
+            char_doc[i][j] = char_dict[c]
     for i, w in enumerate(ex['question']):
         for j, c in enumerate(w):
-            char_qes[i][j] = (char_dict[c])
+            char_qes[i][j] = char_dict[c]
 
     # Create extra features vector
     if len(feature_dict) > 0:

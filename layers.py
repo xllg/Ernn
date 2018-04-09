@@ -199,16 +199,22 @@ class SeqAttnMatch(nn.Module):
         matched_seq = alpha.bmm(y)
         return matched_seq
 
-class CharNN(nn.Module):
-    def __init__(self, input_size, hidden_size, max_clen):
-        super(CharNN, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, bidirectional=True)
-        self.linear = nn.Linear(max_clen, 1)
-    def forward(self, x):
-        x = self.lstm(x)[0]
-        x_proj = self.linear(x.transpose(2, 1))
-        x_proj = F.relu(x_proj)
-        return x_proj.squeeze(2)
+class CharEmbedding(nn.Module):
+    def __init__(self, input_size, hidden_size):
+        super(CharEmbedding, self).__init__()
+        self.hidden_size = hidden_size
+        self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
+        # self.i2o = nn.Linear(input_size + hidden_size, output_size)
+        # self.softmax = nn.LogSoftmax()
+    def forward(self, input, hidden):
+        combined = torch.cat((input, hidden), 1)
+        hidden = self.i2h(combined)
+        # output = self.i2o(combined)
+        # output = self.softmax(output)
+        return hidden
+
+    def initHidden(self, input_size):
+        return Variable(torch.zeros(input_size, self.hidden_size).cuda())
 
 class BilinearSeqAttn(nn.Module):
     """A bilinear attention layer over a sequence X w.r.t y:

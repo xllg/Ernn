@@ -16,14 +16,14 @@ with open(file_path, 'r') as f:
         word = line_split[0]
 
         for char in word:
-            if ord(char) < 128:
+            if ord(char) < 128 and ord(char) > 20:
                 if char in vectors:
                     vectors[char] = (vectors[char][0] + vec,
                                      vectors[char][1] + 1)
                 else:
                     vectors[char] = (vec, 1)
 
-base_name = os.path.join(EMBED_DIR, "glove.840B.300d-char.txt")
+base_name = os.path.join(EMBED_DIR, "glove.840B.300d-char0.txt")
 with open(base_name, 'w') as f2:
     for word in vectors:
         avg_vector = np.round(
