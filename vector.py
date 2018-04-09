@@ -21,10 +21,10 @@ def vectorize(ex, model, single_answer=False):
     char_qes = torch.zeros(len(ex['question']), len(char_dict))
     for i, w in enumerate(ex['document']):
         for j, c in enumerate(w):
-            char_doc[i][j] = char_dict[c]
+            char_doc[i][j] = 1.0
     for i, w in enumerate(ex['question']):
         for j, c in enumerate(w):
-            char_qes[i][j] = char_dict[c]
+            char_qes[i][j] = 1.0
 
     # Create extra features vector
     if len(feature_dict) > 0:
@@ -107,7 +107,8 @@ def batchify(batch):
         x1_f = None
     else:
         x1_f = torch.zeros(len(docs), max_length, features[0].size(1))
-    x1_char = torch.LongTensor(len(docs), max_length, char_docs[0].size(1)).zero_()
+    x1_char = torch.zeros(len(docs), max_length, char_docs[0].size(1))
+    # x1_char = torch.LongTensor(len(docs), max_length, char_docs[0].size(1)).zero_()
     for i, d in enumerate(docs):
         x1[i, :d.size(0)].copy_(d)
         x1_mask[i, :d.size(0)].fill_(0)

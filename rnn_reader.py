@@ -34,7 +34,7 @@ class RnnDocReader(nn.Module):
         self.char_one_hot = layers.CharEmbedding(args.embedding_dim, args.hidden_size)
 
         # Input size to RNN: word emb + question emb +manual features + char emb
-        doc_input_size = args.embedding_dim + args.num_features + args.hidden_size
+        doc_input_size = args.embedding_dim + args.num_features + args.char_size
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
@@ -99,7 +99,13 @@ class RnnDocReader(nn.Module):
         x1_emb = self.embedding(x1)
         x2_emb = self.embedding(x2)
 
-        x1_char_emb = self.char_embedding(x1_char.view(-1, self.args.char_size)).transpose(0,1)
+        # x1_char_emb = self.char_embedding(x1_char.view(-1, self.args.char_size)).transpose(0,1)
+        # x1_char_emb = x1_char.view(-1, self.args.char_size).unsqueeze(1)
+
+        # hidden = self.char_one_hot.initHidden()
+        # for i in range(x1_char_emb.size()[0]):
+        #     hidden = self.char_one_hot(x1_char_emb[i], hidden)
+        # x1_char_emb = hidden.view(x1_emb.size()[0], x1_emb.size()[1], self.args.hidden_size)
 
         # Dropout on embeddings
         if self.args.dropout_emb > 0:
@@ -107,19 +113,14 @@ class RnnDocReader(nn.Module):
                                            training=self.training)
             x2_emb = nn.functional.dropout(x2_emb, p=self.args.dropout_emb,
                                            training=self.training)
-            x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
-                                           training=self.training)
+            # x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
+            #                                training=self.training)
             # x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
             #                                training=self.training)
 
-        hidden = self.char_one_hot.initHidden(x1_char_emb.size()[1])
-        for i in range(x1_char_emb.size()[0]):
-            hidden = self.char_one_hot(x1_char_emb[i], hidden)
-        x1_char_emb = hidden.view(x1_emb.size()[0],x1_emb.size()[1],self.args.hidden_size)
-
         # Form document encoding inputs
         drnn_input = [x1_emb]
-        drnn_input.append(x1_char_emb)
+        drnn_input.append(x1_char)
 
         # Add attention-weighted question representation
         if self.args.use_qemb:

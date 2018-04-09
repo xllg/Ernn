@@ -213,8 +213,8 @@ class CharEmbedding(nn.Module):
         # output = self.softmax(output)
         return hidden
 
-    def initHidden(self, input_size):
-        return Variable(torch.zeros(input_size, self.hidden_size).cuda())
+    def initHidden(self):
+        return Variable(torch.zeros(1, self.hidden_size).cuda())
 
 class BilinearSeqAttn(nn.Module):
     """A bilinear attention layer over a sequence X w.r.t y:
