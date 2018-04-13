@@ -157,14 +157,14 @@ class SeqAttnMatch(nn.Module):
     * alpha_j = softmax(y_j * x_i)
     """
 
-    def __init__(self,input_size,identity=False):
+    def __init__(self, input_size, identity=False):
         super(SeqAttnMatch, self).__init__()
         if not identity:
-            self.linear = nn.Linear(input_size,input_size)
+            self.linear = nn.Linear(input_size, input_size)
         else:
             self.linear = None
 
-    def forward(self,x,y,y_mask):
+    def forward(self, x, y, y_mask):
         """
         :param x: batch * len1 * hdim
         :param y: batch * len2 * hdim
@@ -197,6 +197,7 @@ class SeqAttnMatch(nn.Module):
 
         # Take weighted average
         matched_seq = alpha.bmm(y)
+
         return matched_seq
 
 class CharEmbedding(nn.Module):
