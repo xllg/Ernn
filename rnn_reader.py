@@ -111,24 +111,12 @@ class RnnDocReader(nn.Module):
         x1_emb = self.embedding(x1)
         x2_emb = self.embedding(x2)
 
-        # x1_char_emb = self.char_embedding(x1_char.view(-1, self.args.char_size)).transpose(0,1)
-        # x1_char_emb = x1_char.view(-1, self.args.char_size).unsqueeze(1)
-
-        # hidden = self.char_one_hot.initHidden()
-        # for i in range(x1_char_emb.size()[0]):
-        #     hidden = self.char_one_hot(x1_char_emb[i], hidden)
-        # x1_char_emb = hidden.view(x1_emb.size()[0], x1_emb.size()[1], self.args.hidden_size)
-
         # Dropout on embeddings
         if self.args.dropout_emb > 0:
             x1_emb = nn.functional.dropout(x1_emb, p=self.args.dropout_emb,
                                            training=self.training)
             x2_emb = nn.functional.dropout(x2_emb, p=self.args.dropout_emb,
                                            training=self.training)
-            # x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
-            #                                training=self.training)
-            # x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
-            #                                training=self.training)
 
         # Form document encoding inputs
         drnn_input = [x1_emb]
@@ -145,7 +133,6 @@ class RnnDocReader(nn.Module):
 
         # Encode document with RNN
         doc_hiddens = self.doc_rnn(torch.cat(drnn_input, 2), x1_mask)
-        # char_hiddens = self.char_rnn(x1_char_emb, x1_char_mask)
 
         # Encode question with RNN + merge hiddens
         question_hiddens = self.question_rnn(x2_emb, x2_mask)

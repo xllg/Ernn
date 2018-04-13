@@ -108,7 +108,6 @@ def batchify(batch):
     else:
         x1_f = torch.zeros(len(docs), max_length, features[0].size(1))
     x1_char = torch.zeros(len(docs), max_length, char_docs[0].size(1))
-    # x1_char = torch.LongTensor(len(docs), max_length, char_docs[0].size(1)).zero_()
     for i, d in enumerate(docs):
         x1[i, :d.size(0)].copy_(d)
         x1_mask[i, :d.size(0)].fill_(0)
