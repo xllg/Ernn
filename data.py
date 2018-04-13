@@ -36,7 +36,7 @@ class Dictionary(object):
 
     def __getitem__(self, key):
         if type(key) == int:
-            return self.ind2tok.get(key, self.UNK)
+            return self.ind2tok.get(key, self.UNK) # dict.get(key, default=None) default--如果指定键的值不存在，返回该默认值
         if type(key) == str:
             return self.tok2ind.get(self.normalize(key),
                                     self.tok2ind.get(self.UNK))

@@ -104,11 +104,10 @@ def load_char_words(args, examples):
                 if valid_words and char not in valid_words:
                     continue
                 charts.add(char)
-
-    if args.restrict_vocab and args.char_embedding_file:
-        logger.info('Restricting to charts in %s' % args.char_embedding_file)
+    if args.restrict_vocab and args.embedding_file:
+        logger.info('Restricting to words in %s' % args.char_embedding_file)
         valid_words = index_embedding_words(args.char_embedding_file)
-        logger.info('Num charts in set = %d' % len(valid_words))
+        logger.info('Num words in set = %d' % len(valid_words))
     else:
         valid_words = None
 
@@ -135,7 +134,8 @@ def build_char_dict(args, examples):
     provided examples.
     """
     char_dict = Dictionary()
-    for w in load_char_words(args, examples):
+    temp = load_char_words(args, examples)
+    for w in temp:
         char_dict.add(w)
     return char_dict
 
