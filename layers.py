@@ -164,7 +164,7 @@ class SeqAttnMatch(nn.Module):
         else:
             self.linear = None
 
-    def forward(self, x, y, y_mask):
+    def forward(self, x, x_mask, y, y_mask, direction):
         """
         :param x: batch * len1 * hdim
         :param y: batch * len2 * hdim
@@ -183,20 +183,32 @@ class SeqAttnMatch(nn.Module):
             y_proj = y
 
         # Compute scores
-        scores = x_proj.bmm(y_proj.transpose(2, 1))
-
+        if direction == 'Q2P':
+            scores = x_proj.bmm(y_proj.transpose(2, 1))
+            y_mask = y_mask.unsqueeze(1).expand(scores.size())
+            scores.data.masked_fill_(y_mask.data, -float('inf'))
+            alpha_flat = F.softmax(scores.view(-1, y.size(1)))
+            alpha = alpha_flat.view(-1, x.size(1), y.size(1))
+            matched_seq = alpha.bmm(y)
+        elif direction == 'P2Q':
+            scores = y_proj.bmm(x_proj.transpose(2, 1))
+            x_mask = x_mask.unsqueeze(1).expand(scores.size())
+            scores.data.masked_fill_(x_mask.data, -float('inf'))
+            alpha_flat = F.softmax(scores.view(-1, x.size(1)))
+            alpha = alpha_flat.view(-1, y.size(1), x.size(1))
+            matched_seq = alpha.bmm(x)
         # Mask padding
         # unsqueeze:return a new tensor with a dimension of size one inserted at the specified position
-        y_mask = y_mask.unsqueeze(1).expand(scores.size())
+        # y_mask = y_mask.unsqueeze(1).expand(scores.size())
         # data.masked_fill_(mask,value):在mask值为1的位置处用value填充data
-        scores.data.masked_fill_(y_mask.data, -float('inf'))
+        # scores.data.masked_fill_(y_mask.data, -float('inf'))
 
         # Normalize with softmax
-        alpha_flat = F.softmax(scores.view(-1, y.size(1)))
-        alpha = alpha_flat.view(-1, x.size(1), y.size(1))
+        # alpha_flat = F.softmax(scores.view(-1, y.size(1)))
+        # alpha = alpha_flat.view(-1, x.size(1), y.size(1))
 
         # Take weighted average
-        matched_seq = alpha.bmm(y)
+        # matched_seq = alpha.bmm(y)
 
         return matched_seq
 
@@ -242,7 +254,7 @@ class LinearGated(nn.Module):
 
         # Take weighted average
         matched_seq = alpha.bmm(y)  # 32 * 84 *768
-
+        #
         inputs = torch.cat([x, matched_seq], x.dim() - 1)
         inputs = inputs * F.sigmoid(self.gate(inputs))
 
