@@ -197,37 +197,8 @@ class SeqAttnMatch(nn.Module):
             alpha_flat = F.softmax(scores.view(-1, x.size(1)))
             alpha = alpha_flat.view(-1, y.size(1), x.size(1))
             matched_seq = alpha.bmm(x)
-        # Mask padding
-        # unsqueeze:return a new tensor with a dimension of size one inserted at the specified position
-        # y_mask = y_mask.unsqueeze(1).expand(scores.size())
-        # data.masked_fill_(mask,value):在mask值为1的位置处用value填充data
-        # scores.data.masked_fill_(y_mask.data, -float('inf'))
-
-        # Normalize with softmax
-        # alpha_flat = F.softmax(scores.view(-1, y.size(1)))
-        # alpha = alpha_flat.view(-1, x.size(1), y.size(1))
-
-        # Take weighted average
-        # matched_seq = alpha.bmm(y)
 
         return matched_seq
-
-class CharEmbedding(nn.Module):
-    def __init__(self, input_size, hidden_size):
-        super(CharEmbedding, self).__init__()
-        self.hidden_size = hidden_size
-        self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
-        # self.i2o = nn.Linear(input_size + hidden_size, output_size)
-        # self.softmax = nn.LogSoftmax()
-    def forward(self, input, hidden):
-        combined = torch.cat((input, hidden), 1)
-        hidden = self.i2h(combined)
-        # output = self.i2o(combined)
-        # output = self.softmax(output)
-        return hidden
-
-    def initHidden(self):
-        return Variable(torch.zeros(1, self.hidden_size).cuda())
 
 class LinearGated(nn.Module):
     def __init__(self, input_size):
@@ -308,12 +279,10 @@ class LinearSeqAttn(nn.Module):
 
     * o_i = softmax(Wx_i) for x_i in X.
     """
-
     def __init__(self, input_size):
         super(LinearSeqAttn, self).__init__()
         self.linear1 = nn.Linear(input_size * 2, input_size)
         self.linear = nn.Linear(input_size, 1)
-        # self.linear2 = nn.Linear(input_size, 1)
 
     def forward(self, x, x_mask):
         """
@@ -323,14 +292,11 @@ class LinearSeqAttn(nn.Module):
         Output:
             alpha: batch * len
         """
-        # x1 = F.tanh(self.linear1(x))
-        # scores = self.linear2(x1).view(x.size(0), x.size(1))
         combined = torch.cat((x, x), 2)
         hidden = F.relu(self.linear1(combined))
         x_flat = hidden.view(-1, x.size(-1))
         scores = self.linear(x_flat).view(x.size(0), x.size(1))
         scores.data.masked_fill_(x_mask.data, -float('inf'))
-        # alpha = F.softmax(torch.div(scores, torch.sqrt(torch.FloatTensor([x1.size(1)]))[0]))
         alpha = F.softmax(scores)
         return alpha
 
@@ -365,7 +331,6 @@ def weighted_avg(x, weights):
         x_avg: batch * hdim
     """
     return weights.unsqueeze(1).bmm(x).squeeze(1)
-
 
 
 

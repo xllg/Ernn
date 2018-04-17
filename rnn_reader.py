@@ -23,16 +23,14 @@ class RnnDocReader(nn.Module):
                                       padding_idx=0)
 
         # Char embedding (+1 forpadding)
-        self.char_embedding = nn.Embedding(args.char_size,
-                                      args.embedding_dim,
-                                      padding_idx=0)
+        # self.char_embedding = nn.Embedding(args.char_size,
+        #                               args.embedding_dim,
+        #                               padding_idx=0)
 
         # Projection for attention weighted question
         if args.use_qemb:
             self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
             self.demb_match = layers.SeqAttnMatch(args.embedding_dim)
-
-        self.char_one_hot = layers.CharEmbedding(args.embedding_dim, args.hidden_size)
 
         # Input size to RNN: word emb + question emb +manual features + char emb
         doc_input_size = args.embedding_dim + args.num_features + args.char_size
@@ -74,7 +72,7 @@ class RnnDocReader(nn.Module):
         if args.question_merge not in ['avg', 'self_attn']:
             raise NotImplementedError('merge_mode = %s' % args.merge_mode)
         if args.question_merge == 'self_attn':
-            self.self_attn = layers.LinearSeqAttn(question_hidden_size)
+            self.qes_self_attn = layers.LinearSeqAttn(question_hidden_size)
 
         self.qes_gated = layers.LinearGated(doc_hidden_size)
         self.gated_qes_rnn = layers.StackedBRNN(
@@ -137,7 +135,7 @@ class RnnDocReader(nn.Module):
         # Add attention-weighted question representation
         if self.args.use_qemb:
             x2_weighted_emb = self.qemb_match(x1_emb, x1_mask, x2_emb, x2_mask, 'Q2P')
-            x1_weighted_emb = self.qemb_match(x1_emb, x1_mask, x2_emb, x2_mask, 'P2Q')
+            x1_weighted_emb = self.demb_match(x1_emb, x1_mask, x2_emb, x2_mask, 'P2Q')
             drnn_input.append(x2_weighted_emb)
 
         # Add manual features
@@ -160,7 +158,7 @@ class RnnDocReader(nn.Module):
         if self.args.question_merge == 'avg':
             q_merge_weights = layers.uniform_weights(question_hiddens, x2_mask)
         elif self.args.question_merge == 'self_attn':
-            q_merge_weights = self.self_attn(gated_p2q_vp, x2_mask)
+            q_merge_weights = self.qes_self_attn(gated_p2q_vp, x2_mask)
         question_hidden = layers.weighted_avg(gated_p2q_vp, q_merge_weights)
 
         # Predict start and end positions

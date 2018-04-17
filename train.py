@@ -201,8 +201,8 @@ def init_from_scratch(args, train_exs, dev_exs):
     # Load pretrained embeddings for words in dictionary
     if args.embedding_file:
         model.load_embeddings(word_dict.tokens(), args.embedding_file)
-    if args.char_embedding_file:
-        model.load_char_embeddings(char_dict.tokens(), args.char_embedding_file)
+    # if args.char_embedding_file:
+        # model.load_char_embeddings(char_dict.tokens(), args.char_embedding_file)
 
     return model
 
