@@ -3,7 +3,6 @@
 import torch
 import torch.nn as nn
 from Ernn import layers
-from torch.autograd import Variable
 # ------------------------------------------------------------
 # Network
 # ------------------------------------------------------------
@@ -22,16 +21,9 @@ class RnnDocReader(nn.Module):
                                       args.embedding_dim,
                                       padding_idx=0)
 
-        # Char embedding (+1 forpadding)
-        # self.char_embedding = nn.Embedding(args.char_size,
-        #                               args.embedding_dim,
-        #                               padding_idx=0)
-
         # Projection for attention weighted question
         if args.use_qemb:
             self.seq_match = layers.SeqAttnMatch(args.embedding_dim)
-
-        # self.char_one_hot = layers.CharEmbedding(args.embedding_dim, args.hidden_size)
 
         # Input size to RNN: word emb + question emb +manual features + char emb
         doc_input_size = args.embedding_dim + args.num_features + args.char_size
