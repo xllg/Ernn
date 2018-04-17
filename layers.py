@@ -164,40 +164,39 @@ class SeqAttnMatch(nn.Module):
         else:
             self.linear = None
 
-    def forward(self, x, x_mask, y, y_mask):
+    def forward(self, x, y, y_mask):
         """
         :param x: batch * len1 * hdim
         :param y: batch * len2 * hdim
         :param y_mask: batch * len2 (1 for padding,0 for true)
         :return: matched_seq:batch * len1 * hdim
         """
-
         # Project vectors
         if self.linear:
-            x_proj = self.linear(x.view(-1, x.size(2))).view(x.size())
-            x_proj = F.relu(x_proj)
+            # x_proj = self.linear(x.view(-1, x.size(2))).view(x.size())
+            # x_proj = F.relu(x_proj)
             y_proj = self.linear(y.view(-1, y.size(2))).view(y.size())
             y_proj = F.relu(y_proj)
         else:
             x_proj = x
             y_proj = y
 
-        # 将问题意识加入到文章:
-        scores_q = x_proj.bmm(y_proj.transpose(2, 1))
-        y_mask = y_mask.unsqueeze(1).expand(scores_q.size())
-        scores_q.data.masked_fill_(y_mask.data, -float('inf'))
-        alpha_flat_q = F.softmax(scores_q.view(-1, y.size(1)))
-        alpha_flat_q = alpha_flat_q.view(-1, x.size(1), y.size(1))
-        matched_seq_q = alpha_flat_q.bmm(y)
+        # 将问题和文章意识加入到文章和问题:
+        scores = x.bmm(y_proj.transpose(2, 1))
+        y_mask = y_mask.unsqueeze(1).expand(scores.size())
+        scores.data.masked_fill_(y_mask.data, -float('inf'))
+        alpha_flat = F.softmax(scores.view(-1, y.size(1)))
+        alpha_flat = alpha_flat.view(-1, x.size(1), y.size(1))
+        matched_seq = alpha_flat.bmm(y)
         # 将文章意识加入到问题:
-        scores_p = y_proj.bmm(x_proj.transpose(2, 1))
-        x_mask = x_mask.unsqueeze(1).expand(scores_p.size())
-        scores_p.data.masked_fill_(x_mask.data, -float('inf'))
-        alpha_flat_p = F.softmax(scores_p.view(-1, x.size(1)))
-        alpha_flat_p = alpha_flat_p.view(-1, y.size(1), x.size(1))
-        matched_seq_p = alpha_flat_p.bmm(x)
+        # scores_p = y_proj.bmm(x_proj.transpose(2, 1))
+        # x_mask = x_mask.unsqueeze(1).expand(scores_p.size())
+        # scores_p.data.masked_fill_(x_mask.data, -float('inf'))
+        # alpha_flat_p = F.softmax(scores_p.view(-1, x.size(1)))
+        # alpha_flat_p = alpha_flat_p.view(-1, y.size(1), x.size(1))
+        # matched_seq_p = alpha_flat_p.bmm(x)
 
-        return matched_seq_p, matched_seq_q
+        return matched_seq
 
 class LinearGated(nn.Module):
     def __init__(self, input_size):
@@ -289,10 +288,10 @@ class LinearSeqAttn(nn.Module):
         Output:
             alpha: batch * len
         """
-        combined = torch.cat((x, x), 2)
-        hidden = F.relu(self.linear1(combined))
-        x_flat = hidden.view(-1, x.size(-1))
-        scores = self.linear(x_flat).view(x.size(0), x.size(1))
+        combined = torch.cat((x, x), 2).view(-1, x.size(-1))
+        hidden = F.tanh(self.linear1(combined))
+        # x_flat = hidden.view(-1, x.size(-1))
+        scores = self.linear(hidden).view(x.size(0), x.size(1))
         scores.data.masked_fill_(x_mask.data, -float('inf'))
         alpha = F.softmax(scores)
         return alpha
