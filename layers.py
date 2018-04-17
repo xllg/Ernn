@@ -236,8 +236,9 @@ class LinearGated(nn.Module):
         self.gate = nn.Linear(input_size * 2, input_size * 2)
 
     def forward(self, x, y, y_mask):  # y_mask
-        x_proj = self.linear(x.view(-1, x.size(2))).view(x.size())
-        x_proj = F.relu(x_proj)
+        # x_proj = self.linear(x.view(-1, x.size(2))).view(x.size())
+        # x_proj = F.relu(x_proj)
+        x_proj = x
         y_proj = self.linear(y.view(-1, y.size(2))).view(y.size())
         y_proj = F.relu(y_proj)
 
@@ -310,7 +311,9 @@ class LinearSeqAttn(nn.Module):
 
     def __init__(self, input_size):
         super(LinearSeqAttn, self).__init__()
+        self.linear1 = nn.Linear(input_size * 2, input_size)
         self.linear = nn.Linear(input_size, 1)
+        # self.linear2 = nn.Linear(input_size, 1)
 
     def forward(self, x, x_mask):
         """
@@ -320,9 +323,14 @@ class LinearSeqAttn(nn.Module):
         Output:
             alpha: batch * len
         """
-        x_flat = x.view(-1, x.size(-1))
+        # x1 = F.tanh(self.linear1(x))
+        # scores = self.linear2(x1).view(x.size(0), x.size(1))
+        combined = torch.cat((x, x), 2)
+        hidden = F.relu(self.linear1(combined))
+        x_flat = hidden.view(-1, x.size(-1))
         scores = self.linear(x_flat).view(x.size(0), x.size(1))
         scores.data.masked_fill_(x_mask.data, -float('inf'))
+        # alpha = F.softmax(torch.div(scores, torch.sqrt(torch.FloatTensor([x1.size(1)]))[0]))
         alpha = F.softmax(scores)
         return alpha
 
