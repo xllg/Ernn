@@ -164,7 +164,7 @@ class SeqAttnMatch(nn.Module):
         else:
             self.linear = None
 
-    def forward(self, x, x_mask, y, y_mask, direction):
+    def forward(self, x, x_mask, y, y_mask):
         """
         :param x: batch * len1 * hdim
         :param y: batch * len2 * hdim
