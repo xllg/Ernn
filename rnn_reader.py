@@ -31,6 +31,8 @@ class RnnDocReader(nn.Module):
         if args.use_qemb:
             self.seq_match = layers.SeqAttnMatch(args.embedding_dim)
 
+        # self.char_one_hot = layers.CharEmbedding(args.embedding_dim, args.hidden_size)
+
         # Input size to RNN: word emb + question emb +manual features + char emb
         doc_input_size = args.embedding_dim + args.num_features + args.char_size
         if args.use_qemb:
@@ -133,8 +135,7 @@ class RnnDocReader(nn.Module):
 
         # Add attention-weighted question representation
         if self.args.use_qemb:
-            x2_weighted_emb = self.seq_match(x1_emb, x1_mask, x2_emb, x2_mask, 'Q2P')
-            x1_weighted_emb = self.seq_match(x1_emb, x1_mask, x2_emb, x2_mask, 'P2Q')
+            x1_weighted_emb, x2_weighted_emb = self.seq_match(x1_emb, x1_mask, x2_emb, x2_mask)
             drnn_input.append(x2_weighted_emb)
 
         # Add manual features
