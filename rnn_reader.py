@@ -29,8 +29,7 @@ class RnnDocReader(nn.Module):
 
         # Projection for attention weighted question
         if args.use_qemb:
-            self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
-            self.demb_match = layers.SeqAttnMatch(args.embedding_dim)
+            self.seq_match = layers.SeqAttnMatch(args.embedding_dim)
 
         # Input size to RNN: word emb + question emb +manual features + char emb
         doc_input_size = args.embedding_dim + args.num_features + args.char_size
@@ -134,8 +133,8 @@ class RnnDocReader(nn.Module):
 
         # Add attention-weighted question representation
         if self.args.use_qemb:
-            x2_weighted_emb = self.qemb_match(x1_emb, x1_mask, x2_emb, x2_mask, 'Q2P')
-            x1_weighted_emb = self.demb_match(x1_emb, x1_mask, x2_emb, x2_mask, 'P2Q')
+            x2_weighted_emb = self.seq_match(x1_emb, x1_mask, x2_emb, x2_mask, 'Q2P')
+            x1_weighted_emb = self.seq_match(x1_emb, x1_mask, x2_emb, x2_mask, 'P2Q')
             drnn_input.append(x2_weighted_emb)
 
         # Add manual features
@@ -147,7 +146,6 @@ class RnnDocReader(nn.Module):
 
         # Encode question with RNN + merge hiddens
         question_hiddens = self.question_rnn(torch.cat([x2_emb, x1_weighted_emb], 2), x2_mask)
-
 
         gated_q2p_ct = self.qes_gated(doc_hiddens, question_hiddens, x2_mask)
         gated_q2p_vp = self.gated_qes_rnn(gated_q2p_ct, x1_mask)
