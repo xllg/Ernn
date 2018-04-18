@@ -173,8 +173,8 @@ class SeqAttnMatch(nn.Module):
         """
         # Project vectors
         if self.linear:
-            # x_proj = self.linear(x.view(-1, x.size(2))).view(x.size())
-            # x_proj = F.relu(x_proj)
+            x_proj = self.linear(x.view(-1, x.size(2))).view(x.size())
+            x_proj = F.relu(x_proj)
             y_proj = self.linear(y.view(-1, y.size(2))).view(y.size())
             y_proj = F.relu(y_proj)
         else:
@@ -182,7 +182,7 @@ class SeqAttnMatch(nn.Module):
             y_proj = y
 
         # 将问题和文章意识加入到文章和问题:
-        scores = x.bmm(y_proj.transpose(2, 1))
+        scores = x_proj.bmm(y_proj.transpose(2, 1))
         y_mask = y_mask.unsqueeze(1).expand(scores.size())
         scores.data.masked_fill_(y_mask.data, -float('inf'))
         alpha_flat = F.softmax(scores.view(-1, y.size(1)))
@@ -288,8 +288,8 @@ class LinearSeqAttn(nn.Module):
         Output:
             alpha: batch * len
         """
-        combined = torch.cat((x, x), 2).view(-1, x.size(-1))
-        hidden = F.tanh(self.linear1(combined))
+        combined = torch.cat((x, x), 2)
+        hidden = F.tanh(self.linear1(combined.view(-1, combined.size(-1))))
         # x_flat = hidden.view(-1, x.size(-1))
         scores = self.linear(hidden).view(x.size(0), x.size(1))
         scores.data.masked_fill_(x_mask.data, -float('inf'))

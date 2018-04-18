@@ -127,8 +127,8 @@ class RnnDocReader(nn.Module):
 
         # Add attention-weighted question representation
         if self.args.use_qemb:
-            x1_weighted_emb = self.seq_match(x1_emb, x2_emb, x2_mask) # P2Q
-            x2_weighted_emb = self.seq_match(x2_emb, x1_emb, x1_mask) # Q2P
+            x1_weighted_emb = self.seq_match(x2_emb, x1_emb, x1_mask) # P2Q
+            x2_weighted_emb = self.seq_match(x1_emb, x2_emb, x2_mask) # Q2P
             drnn_input.append(x2_weighted_emb)
 
         # Add manual features
