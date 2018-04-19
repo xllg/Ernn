@@ -59,7 +59,7 @@ def add_model_args(parser):
 
     # Optimization details
     optim = parser.add_argument_group('DrQA Reader Optimization')
-    optim.add_argument('--dropout-emb', type=float, default=0.2,
+    optim.add_argument('--dropout-emb', type=float, default=0.4,
                        help='Dropout rate for word embeddings')
     optim.add_argument('--dropout-rnn', type=float, default=0.4,
                        help='Dropout rate for RNN states')
