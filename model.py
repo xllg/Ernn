@@ -7,6 +7,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 
 from rnn_reader import RnnDocReader
+from config import override_model_args
 
 logger = logging.getLogger(__name__)
 
@@ -324,6 +325,20 @@ class DocReader(object):
             torch.save(params, filename)
         except BaseException:
             logger.warning('WARN: Saving failed... continuing anyway.')
+
+    @staticmethod
+    def load(filename, new_args=None, normalize=True):
+        logger.info('Loading model %s' % filename)
+        saved_params = torch.load(
+            filename, map_location=lambda storage, loc: storage
+        )
+        word_dict = saved_params['word_dict']
+        feature_dict = saved_params['feature_dict']
+        state_dict = saved_params['state_dict']
+        args = saved_params['args']
+        if new_args:
+            args = override_model_args(args, new_args)
+        return DocReader(args, word_dict, feature_dict, state_dict, normalize)
 
     # --------------------------------------------------------------------------
     # Runtime
