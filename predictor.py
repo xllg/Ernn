@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULTS = {
     'tokenizer': tokenizers.CoreNLPTokenizer,
-    'model': os.path.join(ErnnReader_DATA, 'outputs/20180418-P2Q-relu.mdl'),
+    'model': os.path.join(ErnnReader_DATA, 'reader/11.mdl'),
 }
 
 # ------------------------------------------------------------------------------

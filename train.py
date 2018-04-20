@@ -45,7 +45,7 @@ def add_train_args(parser):
                          help='Run on a specific GPU')
     runtime.add_argument('--data-workers', type=int, default=5,
                          help='Number of subprocesses for data loading')
-    runtime.add_argument('--parallel', type='bool', default=True,
+    runtime.add_argument('--parallel', type='bool', default=False,
                          help='Use DataParallel on all available GPUs')
     runtime.add_argument('--random-seed', type=int, default=1013,
                          help=('Random seed for all numpy/torch/cuda '
