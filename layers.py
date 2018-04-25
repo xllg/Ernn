@@ -161,6 +161,7 @@ class SeqAttnMatch(nn.Module):
         super(SeqAttnMatch, self).__init__()
         if not identity:
             self.linear = nn.Linear(input_size, input_size)
+            self.linearcom = nn.Linear(input_size * 2, input_size)
         else:
             self.linear = None
 
@@ -188,6 +189,10 @@ class SeqAttnMatch(nn.Module):
         alpha_flat = F.softmax(scores.view(-1, y.size(1)))
         alpha_flat = alpha_flat.view(-1, x.size(1), y.size(1))
         matched_seq = alpha_flat.bmm(y)
+
+        comb = torch.cat([matched_seq, x], 2)
+        seq = self.linearcom(comb.view(-1, comb.size(-1))).view(x.size())
+        matched_seq = F.relu(seq)
         # 将文章意识加入到问题:
         # scores_p = y_proj.bmm(x_proj.transpose(2, 1))
         # x_mask = x_mask.unsqueeze(1).expand(scores_p.size())
