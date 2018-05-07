@@ -199,22 +199,23 @@ class SeqAttnMatch(nn.Module):
         matched_seq = alpha.bmm(y)
         return matched_seq
 
-class CharEmbedding(nn.Module):
-    def __init__(self, input_size, hidden_size):
-        super(CharEmbedding, self).__init__()
-        self.hidden_size = hidden_size
-        self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
-        # self.i2o = nn.Linear(input_size + hidden_size, output_size)
-        # self.softmax = nn.LogSoftmax()
-    def forward(self, input, hidden):
-        combined = torch.cat((input, hidden), 1)
-        hidden = self.i2h(combined)
-        # output = self.i2o(combined)
-        # output = self.softmax(output)
-        return hidden
-
-    def initHidden(self):
-        return Variable(torch.zeros(1, self.hidden_size).cuda())
+class CharCNN(nn.Module):
+    def __init__(self, max_clen):
+        super(CharCNN, self).__init__()
+        self.cnn = nn.Sequential(  # input shape (2688, 37, 300)
+            nn.Conv1d(max_clen, 1, 11, stride=2, padding=1),  # output shape (2688, 1, 146)
+            nn.ReLU(),  # activation
+            nn.MaxPool1d(5, 2, 1),  # output shape (2688, 1, 72)
+        )
+        self.linear = nn.Linear(72, 72)
+        self.transf = nn.Linear(72, 72)
+    def forward(self, input, size):
+        c = self.cnn(input)
+        cnn_out = c.squeeze(1).view(size, -1, 72)
+        h_o = F.relu(self.linear(cnn_out))
+        t_o = F.sigmoid(self.transf(cnn_out))
+        output = t_o * h_o + (1 - t_o) * cnn_out
+        return output
 
 class LinearGated(nn.Module):
     def __init__(self, input_size):
