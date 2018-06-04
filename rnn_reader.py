@@ -151,3 +151,4 @@ class CharLstm(nn.Module):
                                       dropout=self.args.dropout_rnn)
     def forward(self, x):
         return self.char_lstm(x)
+
