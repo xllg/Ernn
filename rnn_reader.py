@@ -3,6 +3,9 @@
 import torch
 import torch.nn as nn
 import layers
+import copy
+import numpy as np
+from torch.autograd import Variable
 # ------------------------------------------------------------
 # Network
 # ------------------------------------------------------------
@@ -15,21 +18,37 @@ class RnnDocReader(nn.Module):
         super(RnnDocReader,self).__init__()
         # Store config
         self.args = args
+        # self.N = 8
+        self.h = 6
+        # self.d_ff = 1024
 
         # Word embedding (+1 forpadding)
         self.embedding = nn.Embedding(args.vocab_size,
                                       args.embedding_dim,
                                       padding_idx=0)
+        self.c = copy.deepcopy
 
         # Projection for attention weighted question
         if args.use_qemb:
-            self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
+            # self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
+            self.qemb_match = layers.MultiHeadedAttention(self.h, args.embedding_dim, 0)
 
         # Input size to RNN: word emb + question emb +manual features
         doc_input_size = args.embedding_dim + args.num_features
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
+        # self.linear = nn.Linear(doc_input_size, args.embedding_dim)
+
+        # self.ff = layers.PositionwiseFeedForward(args.embedding_dim, self.d_ff, self.args.dropout_emb)
+        #
+        # self.position = layers.PositionalEncoding(args.embedding_dim, self.args.dropout_emb)
+        #
+        # self.qes_encoder = layers.Encoder(layers.EncoderLayer(args.embedding_dim, self.c(self.attn),
+        #                                                       self.c(self.ff), args.dropout_emb), self.N)
+        #
+        # self.doc_encoder = layers.Decoder(layers.DecoderLayer(args.embedding_dim, self.c(self.attn),
+        #                                                       self.c(self.attn), self.c(self.ff), args.dropout_emb), self.N)
         # RNN document encoder
         self.doc_rnn = layers.StackedBRNN(
             input_size=doc_input_size,
@@ -60,6 +79,10 @@ class RnnDocReader(nn.Module):
         if args.concat_rnn_layers:
             doc_hidden_size *= args.doc_layers
             question_hidden_size *= args.question_layers
+        # doc_hidden_size = args.embedding_dim
+        # question_hidden_size = args.embedding_dim
+
+        self.attn = layers.MultiHeadedAttention(self.h, doc_hidden_size, self.args.dropout_emb)
 
         # Question merging
         if args.question_merge not in ['avg', 'self_attn']:
@@ -91,6 +114,16 @@ class RnnDocReader(nn.Module):
         x1_emb = self.embedding(x1)
         x2_emb = self.embedding(x2)
 
+        # x1_emb = self.position(x1_emb)
+        # x2_emb = self.position(x2_emb)
+        # doc_hiddens = self.model(x1, x1_mask)
+        # data = torch.from_numpy(np.random.randint(1, 11, size=(30, 10)))
+        # src = Variable(data, requires_grad=False).cuda()
+        # src_mask = (src != 0).unsqueeze(-2).cuda()
+        # x1_mask = x1_mask.unsqueeze(-2)
+        # x2_mask = x2_mask.unsqueeze(-2)
+        # doc_hiddens = self.model(x1, x1_mask)
+        # question_hiddens = self.model(x2, x2_mask)
         # Dropout on embeddings
         if self.args.dropout_emb > 0:
             x1_emb = nn.functional.dropout(x1_emb, p=self.args.dropout_emb,
@@ -103,18 +136,20 @@ class RnnDocReader(nn.Module):
 
         # Add attention-weighted question representation
         if self.args.use_qemb:
-            x2_weighted_emb = self.qemb_match(x1_emb, x2_emb, x2_mask)
+            x2_weighted_emb = self.qemb_match(x1_emb, x2_emb, x2_emb)
             drnn_input.append(x2_weighted_emb)
 
         # Add manual features
         if self.args.num_features > 0:
             drnn_input.append(x1_f)
 
+
         # Encode document with RNN
         doc_hiddens = self.doc_rnn(torch.cat(drnn_input, 2), x1_mask)
 
         # Encode question with RNN + merge hiddens
         question_hiddens = self.question_rnn(x2_emb, x2_mask)
+
         if self.args.question_merge == 'avg':
             q_merge_weights = layers.uniform_weights(question_hiddens, x2_mask)
         elif self.args.question_merge == 'self_attn':
