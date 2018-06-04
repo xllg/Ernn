@@ -97,26 +97,35 @@ def load_words(args, examples):
 
 def load_char_words(args, examples):
     """Iterate and index all the words in examples (documents + questions)."""
+    # def _insert(iterable):
+    #     for word in iterable:
+    #         for char in word:
+    #             char = Dictionary.normalize(char)
+    #             # if valid_words and char not in valid_words:
+    #             #     continue
+    #             charts.add(char)
+    # if args.restrict_vocab and args.char_embedding_file:
+    #     logger.info('Restricting to charts in %s' % args.char_embedding_file)
+    #     valid_words = index_embedding_words(args.char_embedding_file)
+    #     logger.info('Num charts in set = %d' % len(valid_words))
+    # else:
+    #     valid_words = None
+    # charts = set()
+
     def _insert(iterable):
         for word in iterable:
             for char in word:
                 char = Dictionary.normalize(char)
-                if valid_words and char not in valid_words:
-                    continue
-                charts.add(char)
+                if char not in char_count:
+                    char_count[char] = 0
+                else:
+                    char_count[char] += 1
 
-    if args.restrict_vocab and args.char_embedding_file:
-        logger.info('Restricting to charts in %s' % args.char_embedding_file)
-        valid_words = index_embedding_words(args.char_embedding_file)
-        logger.info('Num charts in set = %d' % len(valid_words))
-    else:
-        valid_words = None
-
-    charts = set()
+    char_count = dict()
     for ex in examples:
         _insert(ex['question'])
         _insert(ex['document'])
-    return charts
+    return char_count
 
 def build_word_dict(args, examples):
     """Return a dictionary from question and document words in
@@ -135,7 +144,9 @@ def build_char_dict(args, examples):
     provided examples.
     """
     char_dict = Dictionary()
-    for w in load_char_words(args, examples):
+    char_count = load_char_words(args, examples)
+    shrink_char_count = [k for (k, v) in iter(char_count.items()) if v >= 5]
+    for w in shrink_char_count:
         char_dict.add(w)
     return char_dict
 

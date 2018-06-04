@@ -5,6 +5,8 @@ Functions for putting examples into torch format.
 from collections import Counter
 import torch
 
+from functools import reduce
+
 def vectorize(ex, model, single_answer=False):
     """Torchify a single example"""
     args = model.args
@@ -17,14 +19,11 @@ def vectorize(ex, model, single_answer=False):
     question = torch.LongTensor([word_dict[w] for w in ex['question']])
 
     # Index character
-    char_doc = torch.zeros(len(ex['document']), args.max_clen)
-    char_qes = torch.zeros(len(ex['question']), args.max_clen)
-    for i, w in enumerate(ex['document']):
-        for j, c in enumerate(w):
-            char_doc[i][j] = (char_dict[c])
-    for i, w in enumerate(ex['question']):
-        for j, c in enumerate(w):
-            char_qes[i][j] = (char_dict[c])
+    char_doc_fea = [list(map(lambda t: char_dict[t], w)) for w in ex['document']]
+    char_doc = torch.LongTensor([char_dict['<NULL>']] + list(reduce(lambda x, y: x + [char_dict['<NULL>']] + y, char_doc_fea)))
+    char_qes_fea = [list(map(lambda t: char_dict[t], w)) for w in ex['question']]
+    char_qes = torch.LongTensor([char_dict['<NULL>']] + list(reduce(lambda x, y: x + [char_dict['<NULL>']] + y, char_qes_fea)))
+
 
     # Create extra features vector
     if len(feature_dict) > 0:
@@ -107,23 +106,29 @@ def batchify(batch):
         x1_f = None
     else:
         x1_f = torch.zeros(len(docs), max_length, features[0].size(1))
-    x1_char = torch.LongTensor(len(docs), max_length, char_docs[0].size(1)).zero_()
+
+    max_cdlength = max([cd.size(0) for cd in char_docs])
+    x1_char = torch.LongTensor(len(docs), max_cdlength).zero_()
+
     for i, d in enumerate(docs):
         x1[i, :d.size(0)].copy_(d)
         x1_mask[i, :d.size(0)].fill_(0)
         if x1_f is not None:
             x1_f[i, :d.size(0)].copy_(features[i])
-        x1_char[i, :d.size(0)].copy_(char_docs[i])
+        x1_char[i, :char_docs[i].size(0)].copy_(char_docs[i])
 
     # Batch questions
     max_length = max([q.size(0) for q in questions])
     x2 = torch.LongTensor(len(questions), max_length).zero_()
     x2_mask = torch.ByteTensor(len(questions), max_length).fill_(1)
-    x2_char = torch.LongTensor(len(questions), max_length, char_questions[0].size(1)).zero_()
+
+    max_cqlength = max([cd.size(0) for cd in char_questions])
+    x2_char = torch.LongTensor(len(questions), max_cqlength).zero_()
+
     for i, q in enumerate(questions):
         x2[i, :q.size(0)].copy_(q)
         x2_mask[i, :q.size(0)].fill_(0)
-        x2_char[i, :q.size(0)].copy_(char_questions[i])
+        x2_char[i, :char_questions[i].size(0)].copy_(char_questions[i])
 
     # Maybe return without targets
     if len(batch[0]) == NUM_INPUTS + NUM_EXTRA:
