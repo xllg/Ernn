@@ -17,24 +17,34 @@ class RnnDocReader(nn.Module):
         # Store config
         self.args = args
 
+        self.char_embedding_dim = 128
+
         # Word embedding (+1 forpadding)
         self.embedding = nn.Embedding(args.vocab_size,
                                       args.embedding_dim,
                                       padding_idx=0)
 
         # Char embedding (+1 forpadding)
-        self.char_embedding = nn.Embedding(args.char_size, 64, padding_idx=0)
+        self.char_embedding = nn.Embedding(args.char_size, self.char_embedding_dim, padding_idx=0)
+
+        # Char encoder
+        self.char_doc_lstm = nn.LSTM(1, 1, num_layers=1, bidirectional=False,
+                                 dropout=args.dropout_rnn)
+
+        self.char_qes_lstm = nn.LSTM(1, 1, num_layers=1, bidirectional=False,
+                                     dropout=args.dropout_rnn)
 
         # Projection for attention weighted question
         if args.use_qemb:
             self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
 
-        # Input size to RNN: word emb + question emb +manual features + char emb
-        doc_input_size = args.embedding_dim * 2 + args.num_features
+        # Input size to DocRNN: word emb + question emb +manual features + char emb
+        doc_input_size = args.embedding_dim + args.num_features + self.char_embedding_dim
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
-        # self.char_doc = layers.CharLinear(args.max_clen)
+        # Input size to QesRNN: question emb + char emb
+        qes_input_size = args.embedding_dim + self.char_embedding_dim
 
         # RNN document encoder
         self.doc_rnn = layers.StackedBRNN(
@@ -50,7 +60,7 @@ class RnnDocReader(nn.Module):
 
         # RNN question encoder
         self.question_rnn = layers.StackedBRNN(
-            input_size=args.embedding_dim,
+            input_size=qes_input_size,
             hidden_size=args.hidden_size,
             num_layers=args.question_layers,
             dropout_rate=args.dropout_rnn,
@@ -98,7 +108,6 @@ class RnnDocReader(nn.Module):
         x2_emb = self.embedding(x2)
 
         x1_char_emb = self.char_embedding(x1_char)
-
         x2_char_emb = self.char_embedding(x2_char)
 
         # Dropout on embeddings
@@ -112,7 +121,18 @@ class RnnDocReader(nn.Module):
             x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
                                            training=self.training)
 
-        x1_char_emb = self.forw_char_lstm(x1_char_emb.transpose(1,2))
+        # LSTM(lenchar, lenword)
+        self.char_doc_lstm.input_size = x1_char.size(1)
+        self.char_qes_lstm.input_size = x2_char.size(1)
+
+        self.char_doc_lstm.hidden_size = x1.size(1)
+        self.char_qes_lstm.hidden_size = x2.size(1)
+
+        x1_char_emb, _ = self.char_doc_lstm(x1_char_emb.transpose(1, 2))
+        x2_char_emb, _ = self.char_qes_lstm(x2_char_emb.transpose(1, 2))
+
+        x1_char_emb = x1_char_emb.transpose(1, 2)
+        x2_char_emb = x2_char_emb.transpose(1, 2)
 
         # Form document encoding inputs
         drnn_input = [x1_emb]
@@ -129,10 +149,9 @@ class RnnDocReader(nn.Module):
 
         # Encode document with RNN
         doc_hiddens = self.doc_rnn(torch.cat(drnn_input, 2), x1_mask)
-        # char_hiddens = self.char_rnn(x1_char_emb, x1_char_mask)
 
         # Encode question with RNN + merge hiddens
-        question_hiddens = self.question_rnn(x2_emb, x2_mask)
+        question_hiddens = self.question_rnn(torch.cat([x2_emb, x2_char_emb], 2), x2_mask)
         if self.args.question_merge == 'avg':
             q_merge_weights = layers.uniform_weights(question_hiddens, x2_mask)
         elif self.args.question_merge == 'self_attn':
@@ -143,12 +162,4 @@ class RnnDocReader(nn.Module):
         start_scores = self.start_attn(doc_hiddens, question_hidden, x1_mask)
         end_scores = self.end_attn(doc_hiddens, question_hidden, x1_mask)
         return start_scores, end_scores
-
-class CharLstm(nn.Module):
-    def __init__(self, input_size):
-        super(CharLstm, self).__init__()
-        self.char_lstm = nn.LSTM(input_size, self.args.hidden_size, num_layers=1, bidirectional=False,
-                                      dropout=self.args.dropout_rnn)
-    def forward(self, x):
-        return self.char_lstm(x)
 
