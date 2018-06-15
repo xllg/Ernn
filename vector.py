@@ -5,6 +5,8 @@ Functions for putting examples into torch format.
 from collections import Counter
 import torch
 
+import itertools
+
 from functools import reduce
 
 def vectorize(ex, model, single_answer=False):
@@ -20,9 +22,16 @@ def vectorize(ex, model, single_answer=False):
 
     # Index character
     char_doc_fea = [list(map(lambda t: char_dict[t], w)) for w in ex['document']]
-    char_doc = torch.LongTensor([char_dict['<NULL>']] + list(reduce(lambda x, y: x + [char_dict['<NULL>']] + y, char_doc_fea)))
+    doc_word_len = list(map(lambda t: len(t) + 1, char_doc_fea))
+    char_doc_pos = torch.LongTensor(list(itertools.accumulate(doc_word_len)))
+    char_doc = torch.LongTensor([char_dict['<NULL>']] + list(reduce(lambda x, y: x + [char_dict['<NULL>']] + y, char_doc_fea))
+                                + [char_dict['<NULL>']])
+
     char_qes_fea = [list(map(lambda t: char_dict[t], w)) for w in ex['question']]
-    char_qes = torch.LongTensor([char_dict['<NULL>']] + list(reduce(lambda x, y: x + [char_dict['<NULL>']] + y, char_qes_fea)))
+    qes_word_len = list(map(lambda t: len(t) + 1, char_qes_fea))
+    char_qes_pos = torch.LongTensor(list(itertools.accumulate(qes_word_len)))
+    char_qes = torch.LongTensor([char_dict['<NULL>']] + list(reduce(lambda x, y: x + [char_dict['<NULL>']] + y, char_qes_fea))
+                                + [char_dict['<NULL>']])
 
 
     # Create extra features vector
@@ -78,7 +87,7 @@ def vectorize(ex, model, single_answer=False):
         start = [a[0] for a in ex['answers']]
         end = [a[1] for a in ex['answers']]
 
-    return document, features, question, char_doc, char_qes, start, end, ex['id']
+    return document, features, question, char_doc, char_doc_pos, char_qes, char_qes_pos, start, end, ex['id']
 
 
 def batchify(batch):
@@ -87,7 +96,7 @@ def batchify(batch):
     :param batch:
     :return:
     """
-    NUM_INPUTS = 5
+    NUM_INPUTS = 7
     NUM_TARGETS = 2
     NUM_EXTRA = 1
 
@@ -96,7 +105,9 @@ def batchify(batch):
     features = [ex[1] for ex in batch]
     questions = [ex[2] for ex in batch]
     char_docs = [ex[3] for ex in batch]
-    char_questions = [ex[4] for ex in batch]
+    char_docs_pos = [ex[4] for ex in batch]
+    char_qes = [ex[5] for ex in batch]
+    char_qes_pos = [ex[6] for ex in batch]
 
     # Batch documents, features and char_docs
     max_length = max([d.size(0) for d in docs])
@@ -107,8 +118,10 @@ def batchify(batch):
     else:
         x1_f = torch.zeros(len(docs), max_length, features[0].size(1))
 
-    max_cdlength = max([cd.size(0) for cd in char_docs])
-    x1_char = torch.LongTensor(len(docs), max_cdlength).zero_()
+    max_cdlen = max([cd.size(0) for cd in char_docs])
+    x1_char = torch.LongTensor(len(docs), max_cdlen).zero_()
+    max_cdplen = max([cd.size(0) for cd in char_docs_pos])
+    x1_char_pos = torch.LongTensor(len(docs), max_cdplen).zero_()
 
     for i, d in enumerate(docs):
         x1[i, :d.size(0)].copy_(d)
@@ -116,33 +129,37 @@ def batchify(batch):
         if x1_f is not None:
             x1_f[i, :d.size(0)].copy_(features[i])
         x1_char[i, :char_docs[i].size(0)].copy_(char_docs[i])
+        x1_char_pos[i, :char_docs_pos[i].size(0)].copy_(char_docs_pos[i])
 
     # Batch questions
     max_length = max([q.size(0) for q in questions])
     x2 = torch.LongTensor(len(questions), max_length).zero_()
     x2_mask = torch.ByteTensor(len(questions), max_length).fill_(1)
 
-    max_cqlength = max([cd.size(0) for cd in char_questions])
-    x2_char = torch.LongTensor(len(questions), max_cqlength).zero_()
+    max_cqlen = max([cd.size(0) for cd in char_qes])
+    x2_char = torch.LongTensor(len(questions), max_cqlen).zero_()
+    max_cqplen = max([cd.size(0) for cd in char_qes_pos])
+    x2_char_pos = torch.LongTensor(len(questions), max_cqplen).zero_()
 
     for i, q in enumerate(questions):
         x2[i, :q.size(0)].copy_(q)
         x2_mask[i, :q.size(0)].fill_(0)
-        x2_char[i, :char_questions[i].size(0)].copy_(char_questions[i])
+        x2_char[i, :char_qes[i].size(0)].copy_(char_qes[i])
+        x2_char_pos[i, :char_qes_pos[i].size(0)].copy_(char_qes_pos[i])
 
     # Maybe return without targets
     if len(batch[0]) == NUM_INPUTS + NUM_EXTRA:
-        return x1, x1_f, x1_mask, x1_char, x2, x2_mask, x2_char, ids
+        return x1, x1_f, x1_mask, x1_char, x1_char_pos, x2, x2_mask, x2_char_pos, x2_char, ids
 
     elif len(batch[0]) == NUM_INPUTS + NUM_EXTRA + NUM_TARGETS:
         # ...Otherwise add targets
-        if torch.is_tensor(batch[0][5]):
-            y_s = torch.cat([ex[5] for ex in batch])
-            y_e = torch.cat([ex[6] for ex in batch])
+        if torch.is_tensor(batch[0][7]):
+            y_s = torch.cat([ex[7] for ex in batch])
+            y_e = torch.cat([ex[8] for ex in batch])
         else:
-            y_s = [ex[5] for ex in batch]
-            y_e = [ex[6] for ex in batch]
+            y_s = [ex[7] for ex in batch]
+            y_e = [ex[8] for ex in batch]
     else:
         raise RuntimeError('Incorrect number of inputs per example.')
 
-    return x1, x1_f, x1_mask, x1_char, x2, x2_mask, x2_char, y_s, y_e, ids
+    return x1, x1_f, x1_mask, x1_char, x1_char_pos, x2, x2_mask, x2_char, x2_char_pos, y_s, y_e, ids

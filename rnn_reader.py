@@ -3,11 +3,9 @@
 import torch
 import torch.nn as nn
 from Ernn import layers
-from torch.autograd import Variable
 # ------------------------------------------------------------
 # Network
 # ------------------------------------------------------------
-
 
 class RnnDocReader(nn.Module):
     RNN_TYPES = {'lstm': nn.LSTM, 'gru': nn.GRU, 'rnn': nn.RNN}
@@ -28,10 +26,10 @@ class RnnDocReader(nn.Module):
         self.char_embedding = nn.Embedding(args.char_size, self.char_embedding_dim, padding_idx=0)
 
         # Char encoder
-        self.char_doc_lstm = nn.LSTM(1, 1, num_layers=1, bidirectional=False,
+        self.char_doc_lstm = nn.LSTM(self.char_embedding_dim, args.hidden_size, num_layers=1, bidirectional=False,
                                  dropout=args.dropout_rnn)
 
-        self.char_qes_lstm = nn.LSTM(1, 1, num_layers=1, bidirectional=False,
+        self.char_qes_lstm = nn.LSTM(self.char_embedding_dim, args.hidden_size, num_layers=1, bidirectional=False,
                                      dropout=args.dropout_rnn)
 
         # Projection for attention weighted question
@@ -39,12 +37,12 @@ class RnnDocReader(nn.Module):
             self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
 
         # Input size to DocRNN: word emb + question emb +manual features + char emb
-        doc_input_size = args.embedding_dim + args.num_features + self.char_embedding_dim
+        doc_input_size = args.embedding_dim + args.num_features + args.hidden_size
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
         # Input size to QesRNN: question emb + char emb
-        qes_input_size = args.embedding_dim + self.char_embedding_dim
+        qes_input_size = args.embedding_dim + args.hidden_size
 
         # RNN document encoder
         self.doc_rnn = layers.StackedBRNN(
@@ -95,7 +93,8 @@ class RnnDocReader(nn.Module):
             normalize=normalize,
         )
 
-    def forward(self, x1, x1_f, x1_mask, x1_char, x2, x2_mask, x2_char):
+    # x1, x1_f, x1_mask, x1_char, x1_char_pos, x2, x2_mask, x2_char, x2_char_pos
+    def forward(self, x1, x1_f, x1_mask, x1_char, x1_char_pos, x2, x2_mask, x2_char, x2_char_pos):
         """Inputs:
         x1 = document word indices             [batch * len_d]
         x1_f = document word features indices  [batch * len_d * nfeat]
@@ -116,23 +115,24 @@ class RnnDocReader(nn.Module):
                                            training=self.training)
             x2_emb = nn.functional.dropout(x2_emb, p=self.args.dropout_emb,
                                            training=self.training)
-            x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
-                                           training=self.training)
-            x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
-                                           training=self.training)
+        #     x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
+        #                                    training=self.training)
+        #     x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
+        #                                    training=self.training)
 
-        # LSTM(lenchar, lenword)
-        self.char_doc_lstm.input_size = x1_char.size(1)
-        self.char_qes_lstm.input_size = x2_char.size(1)
+        x1_char_emb, _ = self.char_doc_lstm(x1_char_emb)
+        x2_char_emb, _ = self.char_qes_lstm(x2_char_emb)
 
-        self.char_doc_lstm.hidden_size = x1.size(1)
-        self.char_qes_lstm.hidden_size = x2.size(1)
+        x1_char_pos = x1_char_pos.unsqueeze(2).expand(x1_char_pos.size(0), x1_char_pos.size(1), x1_char_emb.size(2))
+        x1_char_emb = torch.gather(x1_char_emb, 1, x1_char_pos)
 
-        x1_char_emb, _ = self.char_doc_lstm(x1_char_emb.transpose(1, 2))
-        x2_char_emb, _ = self.char_qes_lstm(x2_char_emb.transpose(1, 2))
+        x2_char_pos = x2_char_pos.unsqueeze(2).expand(x2_char_pos.size(0), x2_char_pos.size(1), x2_char_emb.size(2))
+        x2_char_emb = torch.gather(x2_char_emb, 1, x2_char_pos)
 
-        x1_char_emb = x1_char_emb.transpose(1, 2)
-        x2_char_emb = x2_char_emb.transpose(1, 2)
+        x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
+                                            training=self.training)
+        x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
+                                            training=self.training)
 
         # Form document encoding inputs
         drnn_input = [x1_emb]

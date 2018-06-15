@@ -187,7 +187,7 @@ def init_from_scratch(args, train_exs, dev_exs):
     logger.info('Build dictionary')
     word_dict = utils.build_word_dict(args, train_exs + dev_exs)
     logger.info('Num words = %d' % len(word_dict))
-    # args.max_clen = utils.max_word_len(train_exs + dev_exs)
+    args.max_clen = utils.max_word_len(train_exs + dev_exs)
 
     # Build a character dictionary from the data questions + words (train/dev splits)
     logger.info('-' * 100)
