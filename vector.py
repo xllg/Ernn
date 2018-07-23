@@ -22,17 +22,29 @@ def vectorize(ex, model, single_answer=False):
 
     # Index character
     char_doc_fea = [list(map(lambda t: char_dict[t], w)) for w in ex['document']]
-    doc_word_len = list(map(lambda t: len(t) + 1, char_doc_fea))
-    char_doc_pos = torch.LongTensor(list(itertools.accumulate(doc_word_len)))
-    char_doc = torch.LongTensor([char_dict['<NULL>']] + list(reduce(lambda x, y: x + [char_dict['<NULL>']] + y, char_doc_fea))
-                                + [char_dict['<NULL>']])
-
     char_qes_fea = [list(map(lambda t: char_dict[t], w)) for w in ex['question']]
-    qes_word_len = list(map(lambda t: len(t) + 1, char_qes_fea))
-    char_qes_pos = torch.LongTensor(list(itertools.accumulate(qes_word_len)))
-    char_qes = torch.LongTensor([char_dict['<NULL>']] + list(reduce(lambda x, y: x + [char_dict['<NULL>']] + y, char_qes_fea))
-                                + [char_dict['<NULL>']])
 
+    # document前向字符编码
+    doc_word_forw_len = list(map(lambda t: len(t) + 1, char_doc_fea))
+    doc_forw_corpus = [char_dict['<NULL>']] + list(reduce(lambda x, y: x + [char_dict['<NULL>']] + y, char_doc_fea)) + [char_dict['<NULL>']]
+    char_doc_forw_pos = torch.LongTensor(list(itertools.accumulate(doc_word_forw_len)))
+    char_doc_forw = torch.LongTensor(doc_forw_corpus)
+    # document反向字符编码
+    doc_back_corpus = doc_forw_corpus[::-1]  # 倒序
+    doc_word_back_len = doc_word_forw_len[::-1]
+    char_doc_back_pos = torch.LongTensor(list(itertools.accumulate(doc_word_back_len)))
+    char_doc_back = torch.LongTensor(doc_back_corpus)
+
+    # question前向字符编码
+    qes_word_forw_len = list(map(lambda t: len(t) + 1, char_qes_fea))
+    qes_forw_corpus = [char_dict['<NULL>']] + list(reduce(lambda x, y: x + [char_dict['<NULL>']] + y, char_qes_fea)) + [char_dict['<NULL>']]
+    char_qes_forw_pos = torch.LongTensor(list(itertools.accumulate(qes_word_forw_len)))
+    char_qes_forw = torch.LongTensor(qes_forw_corpus)
+    # question前向字符编码
+    qes_back_corpus = qes_forw_corpus[::-1]  # 倒序
+    qes_word_back_len = qes_word_forw_len[::-1]
+    char_qes_back_pos = torch.LongTensor(list(itertools.accumulate(qes_word_back_len)))
+    char_qes_back = torch.LongTensor(qes_back_corpus)
 
     # Create extra features vector
     if len(feature_dict) > 0:
@@ -76,7 +88,7 @@ def vectorize(ex, model, single_answer=False):
 
     # Maybe return without target
     if 'answers' not in ex:
-        return document, features, question, char_doc, char_qes, ex['id']
+        return document, features, question, char_doc_forw, char_doc_forw_pos, char_qes_forw, char_qes_forw_pos, ex['id']
 
     # ...or with target(s) (might still be empty if answers is empty)
     if single_answer:
@@ -87,7 +99,8 @@ def vectorize(ex, model, single_answer=False):
         start = [a[0] for a in ex['answers']]
         end = [a[1] for a in ex['answers']]
 
-    return document, features, question, char_doc, char_doc_pos, char_qes, char_qes_pos, start, end, ex['id']
+    return document, features, question, char_doc_forw, char_doc_forw_pos, char_doc_back, char_doc_back_pos, \
+           char_qes_forw, char_qes_forw_pos, char_qes_back, char_qes_back_pos, start, end, ex['id']
 
 
 def batchify(batch):
@@ -96,7 +109,7 @@ def batchify(batch):
     :param batch:
     :return:
     """
-    NUM_INPUTS = 7
+    NUM_INPUTS = 11
     NUM_TARGETS = 2
     NUM_EXTRA = 1
 
@@ -104,10 +117,14 @@ def batchify(batch):
     docs = [ex[0] for ex in batch]
     features = [ex[1] for ex in batch]
     questions = [ex[2] for ex in batch]
-    char_docs = [ex[3] for ex in batch]
-    char_docs_pos = [ex[4] for ex in batch]
-    char_qes = [ex[5] for ex in batch]
-    char_qes_pos = [ex[6] for ex in batch]
+    char_docs_forw = [ex[3] for ex in batch]
+    char_docs_forw_pos = [ex[4] for ex in batch]
+    char_docs_back = [ex[5] for ex in batch]
+    char_docs_back_pos = [ex[6] for ex in batch]
+    char_qes_forw = [ex[7] for ex in batch]
+    char_qes_forw_pos = [ex[8] for ex in batch]
+    char_qes_back = [ex[9] for ex in batch]
+    char_qes_back_pos = [ex[10] for ex in batch]
 
     # Batch documents, features and char_docs
     max_length = max([d.size(0) for d in docs])
@@ -118,48 +135,56 @@ def batchify(batch):
     else:
         x1_f = torch.zeros(len(docs), max_length, features[0].size(1))
 
-    max_cdlen = max([cd.size(0) for cd in char_docs])
-    x1_char = torch.LongTensor(len(docs), max_cdlen).zero_()
-    max_cdplen = max([cd.size(0) for cd in char_docs_pos])
-    x1_char_pos = torch.LongTensor(len(docs), max_cdplen).zero_()
+    max_cdlen = max([cd.size(0) for cd in char_docs_forw])
+    x1_char_forw = torch.LongTensor(len(docs), max_cdlen).zero_()
+    x1_char_back = torch.LongTensor(len(docs), max_cdlen).zero_()
+    max_cdplen = max([cd.size(0) for cd in char_docs_forw_pos])
+    x1_char_pos_forw = torch.LongTensor(len(docs), max_cdplen).zero_()
+    x1_char_pos_back = torch.LongTensor(len(docs), max_cdplen).zero_()
 
     for i, d in enumerate(docs):
         x1[i, :d.size(0)].copy_(d)
         x1_mask[i, :d.size(0)].fill_(0)
         if x1_f is not None:
             x1_f[i, :d.size(0)].copy_(features[i])
-        x1_char[i, :char_docs[i].size(0)].copy_(char_docs[i])
-        x1_char_pos[i, :char_docs_pos[i].size(0)].copy_(char_docs_pos[i])
+        x1_char_forw[i, :char_docs_forw[i].size(0)].copy_(char_docs_forw[i])
+        x1_char_pos_forw[i, :char_docs_forw_pos[i].size(0)].copy_(char_docs_forw_pos[i])
+        x1_char_back[i, :char_docs_back[i].size(0)].copy_(char_docs_back[i])
+        x1_char_pos_back[i, :char_docs_back_pos[i].size(0)].copy_(char_docs_back_pos[i])
 
     # Batch questions
     max_length = max([q.size(0) for q in questions])
     x2 = torch.LongTensor(len(questions), max_length).zero_()
     x2_mask = torch.ByteTensor(len(questions), max_length).fill_(1)
 
-    max_cqlen = max([cd.size(0) for cd in char_qes])
-    x2_char = torch.LongTensor(len(questions), max_cqlen).zero_()
-    max_cqplen = max([cd.size(0) for cd in char_qes_pos])
-    x2_char_pos = torch.LongTensor(len(questions), max_cqplen).zero_()
+    max_cqlen = max([cd.size(0) for cd in char_qes_forw])
+    x2_char_forw = torch.LongTensor(len(questions), max_cqlen).zero_()
+    x2_char_back = torch.LongTensor(len(questions), max_cqlen).zero_()
+    max_cqplen = max([cd.size(0) for cd in char_qes_forw_pos])
+    x2_char_pos_forw = torch.LongTensor(len(questions), max_cqplen).zero_()
+    x2_char_pos_back = torch.LongTensor(len(questions), max_cqplen).zero_()
 
     for i, q in enumerate(questions):
         x2[i, :q.size(0)].copy_(q)
         x2_mask[i, :q.size(0)].fill_(0)
-        x2_char[i, :char_qes[i].size(0)].copy_(char_qes[i])
-        x2_char_pos[i, :char_qes_pos[i].size(0)].copy_(char_qes_pos[i])
+        x2_char_forw[i, :char_qes_forw[i].size(0)].copy_(char_qes_forw[i])
+        x2_char_pos_forw[i, :char_qes_forw_pos[i].size(0)].copy_(char_qes_forw_pos[i])
+        x2_char_back[i, :char_qes_back[i].size(0)].copy_(char_qes_back[i])
+        x2_char_pos_back[i, :char_qes_back_pos[i].size(0)].copy_(char_qes_back_pos[i])
 
     # Maybe return without targets
     if len(batch[0]) == NUM_INPUTS + NUM_EXTRA:
-        return x1, x1_f, x1_mask, x1_char, x1_char_pos, x2, x2_mask, x2_char_pos, x2_char, ids
+        return x1, x1_f, x1_mask, x1_char_forw, x1_char_pos_forw, x1_char_back, x1_char_pos_back, x2, x2_mask, x2_char_forw, x2_char_pos_forw, x2_char_back, x2_char_pos_back, ids
 
     elif len(batch[0]) == NUM_INPUTS + NUM_EXTRA + NUM_TARGETS:
         # ...Otherwise add targets
-        if torch.is_tensor(batch[0][7]):
-            y_s = torch.cat([ex[7] for ex in batch])
-            y_e = torch.cat([ex[8] for ex in batch])
+        if torch.is_tensor(batch[0][11]):
+            y_s = torch.cat([ex[11] for ex in batch])
+            y_e = torch.cat([ex[12] for ex in batch])
         else:
-            y_s = [ex[7] for ex in batch]
-            y_e = [ex[8] for ex in batch]
+            y_s = [ex[11] for ex in batch]
+            y_e = [ex[12] for ex in batch]
     else:
         raise RuntimeError('Incorrect number of inputs per example.')
 
-    return x1, x1_f, x1_mask, x1_char, x1_char_pos, x2, x2_mask, x2_char, x2_char_pos, y_s, y_e, ids
+    return x1, x1_f, x1_mask, x1_char_forw, x1_char_pos_forw, x1_char_back, x1_char_pos_back, x2, x2_mask, x2_char_forw, x2_char_pos_forw, x2_char_back, x2_char_pos_back, y_s, y_e, ids
