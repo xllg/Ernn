@@ -28,13 +28,13 @@ class RnnDocReader(nn.Module):
 
         # Char encoder
         char_lstm_hidden_size = args.hidden_size
-        self.char_doc_forw_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=1, bidirectional=False,
+        self.char_doc_forw_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=2, bidirectional=False,
                                           dropout=args.dropout_rnn)
-        self.char_doc_back_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=1, bidirectional=False,
+        self.char_doc_back_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=2, bidirectional=False,
                                           dropout=args.dropout_rnn)
-        self.char_qes_forw_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=1, bidirectional=False,
+        self.char_qes_forw_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=2, bidirectional=False,
                                           dropout=args.dropout_rnn)
-        self.char_qes_back_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=1, bidirectional=False,
+        self.char_qes_back_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=2, bidirectional=False,
                                           dropout=args.dropout_rnn)
 
         self.doc_init = nn.Sequential(
