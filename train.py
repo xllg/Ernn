@@ -234,7 +234,7 @@ def train(args, data_loader, model, global_stats):
                         (train_loss.avg, global_stats['timer'].time()))
             train_loss.reset()
 
-    logger.info('train: Epoch %d done。 Time for epoch = %.2f' %
+    logger.info('train: Epoch %d done. Time for epoch = %.2f' %
                 (global_stats['epoch'], epoch_time.time()))
 
     # Checkpoint

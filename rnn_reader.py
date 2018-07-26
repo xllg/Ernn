@@ -3,7 +3,6 @@
 import torch
 import torch.nn as nn
 from Ernn import layers
-
 # ------------------------------------------------------------
 # Network
 # ------------------------------------------------------------
@@ -24,39 +23,32 @@ class RnnDocReader(nn.Module):
                                       padding_idx=0)
 
         # Char embedding (+1 forpadding)
-        self.char_embedding = nn.Embedding(args.char_size, self.char_embedding_dim, padding_idx=0)
+        self.char_embedding = nn.Embedding(args.char_size,
+                                           self.char_embedding_dim,
+                                           padding_idx=0)
 
         # Char encoder
-        char_lstm_hidden_size = args.hidden_size
-        self.char_doc_forw_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=2, bidirectional=False,
-                                          dropout=args.dropout_rnn)
-        self.char_doc_back_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=2, bidirectional=False,
-                                          dropout=args.dropout_rnn)
-        self.char_qes_forw_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=2, bidirectional=False,
-                                          dropout=args.dropout_rnn)
-        self.char_qes_back_lstm = nn.LSTM(self.char_embedding_dim, char_lstm_hidden_size, num_layers=2, bidirectional=False,
-                                          dropout=args.dropout_rnn)
+        self.char_lstm = layers.CharLSTM(
+            self.char_embedding_dim,
+            args.hidden_size,
+            num_layers=2,
+            bidirectional=False,
+            dropout=args.dropout_rnn
+        )
 
-        self.doc_init = nn.Sequential(
-            nn.Linear(char_lstm_hidden_size * 2, args.hidden_size),
-            nn.ReLU()
-        )
-        self.qes_init = nn.Sequential(
-            nn.Linear(char_lstm_hidden_size * 2, args.hidden_size),
-            nn.ReLU()
-        )
         # Projection for attention weighted question
         if args.use_qemb:
             self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
 
         # Input size to DocRNN: word emb + question emb +manual features + char emb
-        doc_input_size = args.embedding_dim + args.num_features + args.hidden_size
-        # doc_input_size = args.embedding_dim + args.hidden_size
+        # doc_input_size = args.embedding_dim + args.num_features + args.hidden_size
+        doc_input_size = args.embedding_dim + args.num_features
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
         # Input size to QesRNN: question emb + char emb
-        qes_input_size = args.embedding_dim + args.hidden_size
+        # qes_input_size = args.embedding_dim + args.hidden_size
+        qes_input_size = args.embedding_dim
 
         # RNN document encoder
         self.doc_rnn = layers.StackedBRNN(
@@ -124,10 +116,10 @@ class RnnDocReader(nn.Module):
         x1_emb = self.embedding(x1)
         x2_emb = self.embedding(x2)
 
-        x1_char_forw_emb = self.char_embedding(x1_char_forw)
-        x2_char_forw_emb = self.char_embedding(x2_char_forw)
-        x1_char_back_emb = self.char_embedding(x1_char_back)
-        x2_char_back_emb = self.char_embedding(x2_char_back)
+        # x1_char_forw_emb = self.char_embedding(x1_char_forw)
+        # x2_char_forw_emb = self.char_embedding(x2_char_forw)
+        # x1_char_back_emb = self.char_embedding(x1_char_back)
+        # x2_char_back_emb = self.char_embedding(x2_char_back)
 
         # Dropout on embeddings
         if self.args.dropout_emb > 0:
@@ -135,43 +127,23 @@ class RnnDocReader(nn.Module):
                                            training=self.training)
             x2_emb = nn.functional.dropout(x2_emb, p=self.args.dropout_emb,
                                            training=self.training)
-            x1_char_forw_emb = nn.functional.dropout(x1_char_forw_emb, p=self.args.dropout_emb,
-                                                training=self.training)
-            x2_char_forw_emb = nn.functional.dropout(x2_char_forw_emb, p=self.args.dropout_emb,
-                                                training=self.training)
-            x1_char_back_emb = nn.functional.dropout(x1_char_back_emb, p=self.args.dropout_emb,
-                                                     training=self.training)
-            x2_char_back_emb = nn.functional.dropout(x2_char_back_emb, p=self.args.dropout_emb,
-                                                     training=self.training)
+            # x1_char_forw_emb = nn.functional.dropout(x1_char_forw_emb, p=self.args.dropout_emb,
+            #                                     training=self.training)
+            # x2_char_forw_emb = nn.functional.dropout(x2_char_forw_emb, p=self.args.dropout_emb,
+            #                                     training=self.training)
+            # x1_char_back_emb = nn.functional.dropout(x1_char_back_emb, p=self.args.dropout_emb,
+            #                                          training=self.training)
+            # x2_char_back_emb = nn.functional.dropout(x2_char_back_emb, p=self.args.dropout_emb,
+            #                                          training=self.training)
 
-        x1_char_forw_emb, _ = self.char_doc_forw_lstm(x1_char_forw_emb)
-        x2_char_forw_emb, _ = self.char_qes_forw_lstm(x2_char_forw_emb)
-        x1_char_back_emb, _ = self.char_doc_back_lstm(x1_char_back_emb)
-        x2_char_back_emb, _ = self.char_qes_back_lstm(x2_char_back_emb)
-
-        x1_char_pos_forw = x1_char_pos_forw.unsqueeze(2).expand(x1_char_pos_forw.size(0), x1_char_pos_forw.size(1), x1_char_forw_emb.size(2))
-        x1_char_forw_emb = torch.gather(x1_char_forw_emb, 1, x1_char_pos_forw)
-        x1_char_pos_back = x1_char_pos_back.unsqueeze(2).expand(x1_char_pos_back.size(0), x1_char_pos_back.size(1), x1_char_back_emb.size(2))
-        x1_char_back_emb = torch.gather(x1_char_back_emb, 1, x1_char_pos_back)
-
-        x2_char_pos_forw = x2_char_pos_forw.unsqueeze(2).expand(x2_char_pos_forw.size(0), x2_char_pos_forw.size(1), x2_char_forw_emb.size(2))
-        x2_char_forw_emb = torch.gather(x2_char_forw_emb, 1, x2_char_pos_forw)
-        x2_char_pos_back = x2_char_pos_back.unsqueeze(2).expand(x2_char_pos_back.size(0), x2_char_pos_back.size(1), x2_char_back_emb.size(2))
-        x2_char_back_emb = torch.gather(x2_char_back_emb, 1, x2_char_pos_back)
-
-        # x1_char_emb = torch.cat([x1_char_forw_emb, x1_char_back_emb], 2)
-        # x2_char_emb = torch.cat([x2_char_forw_emb, x2_char_back_emb], 2)
-        x1_char_emb = self.doc_init(torch.cat([x1_char_forw_emb, x1_char_back_emb], 2))
-        x2_char_emb = self.qes_init(torch.cat([x2_char_forw_emb, x2_char_back_emb], 2))
-
-        x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
-                                                 training=self.training)
-        x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
-                                                 training=self.training)
+        # x1_char_emb, x2_char_emb = self.char_lstm(x1_char_forw_emb, x1_char_pos_forw,
+        #                                           x1_char_back_emb, x1_char_pos_back,
+        #                                           x2_char_forw_emb, x2_char_pos_forw,
+        #                                           x2_char_back_emb, x2_char_pos_back)
 
         # Form document encoding inputs
         drnn_input = [x1_emb]
-        drnn_input.append(x1_char_emb)
+        # drnn_input.append(x1_char_emb)
 
         # Add attention-weighted question representation
         if self.args.use_qemb:
@@ -185,7 +157,8 @@ class RnnDocReader(nn.Module):
         # Encode document with RNN
         doc_hiddens = self.doc_rnn(torch.cat(drnn_input, 2), x1_mask)
         # Encode question with RNN + merge hiddens
-        question_hiddens = self.question_rnn(torch.cat([x2_emb, x2_char_emb], 2), x2_mask)
+        # question_hiddens = self.question_rnn(torch.cat([x2_emb, x2_char_emb], 2), x2_mask)
+        question_hiddens = self.question_rnn(x2_emb, x2_mask)
         if self.args.question_merge == 'avg':
             q_merge_weights = layers.uniform_weights(question_hiddens, x2_mask)
         elif self.args.question_merge == 'self_attn':
