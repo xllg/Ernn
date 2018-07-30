@@ -80,7 +80,7 @@ def add_train_args(parser):
                        default='glove.840B.300d.txt',
                        help='Space-separated pretrained embeddings file')
     files.add_argument('--char-embedding-file', type=str,
-                       default='glove.840B.300d-char.txt',
+                       default='glove_model_char_vec.txt',
                        help='Space-separated pretrained char-embeddings file')
 
     # Saving + loading

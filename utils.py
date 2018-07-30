@@ -4,6 +4,8 @@ import logging
 import string
 import regex as re
 
+import gensim
+
 from Ernn.data import Dictionary
 from collections import Counter
 
@@ -146,8 +148,22 @@ def build_char_dict(args, examples):
     char_dict = Dictionary()
     char_count = load_char_words(args, examples)
     shrink_char_count = [k for (k, v) in iter(char_count.items()) if v >= 5]
+    # logger.info('Build character vector model')
+    # gensim_file = '../data/embeddings/glove_model.txt'
+    # model = gensim.models.KeyedVectors.load_word2vec_format(gensim_file)
+
+    # with open("../data/embeddings/glove_model_char_vec.txt", "w") as f:
     for w in shrink_char_count:
+        w = Dictionary.normalize(w)
         char_dict.add(w)
+        # if w in model.vocab:
+        #     temp = model[w].tolist()
+        #     temp = [str(round(i, 6)) for i in temp]
+        #     temp.insert(0, w)
+        #     temp = ' '.join(temp)
+        #     f.write(temp)
+        #     f.write('\n')
+    # logger.info('Finished character vector writting')
     return char_dict
 
 def top_question_words(args, examples, word_dict):

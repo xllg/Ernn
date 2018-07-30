@@ -33,8 +33,8 @@ def prepend_slow(infile, outfile, line):
 
 def load(filename):
     # num_lines = getFileLineNums(filename)
-    gensim_file = 'glove_model.txt'
-    # gensim_first_line = "{} {}".format(num_lines, 300)
+    gensim_file = '../data/embeddings/glove.6B.100d_processed.txt'
+    # gensim_first_line = "{} {}".format(num_lines, 100)
     # # Prepends the line.
     # if platform == "linux" or platform == "linux2":
     #     prepend_line(filename, gensim_file, gensim_first_line)
@@ -45,4 +45,4 @@ def load(filename):
     print("aa")
 
 
-load('../data/embeddings/glove.840B.300d.txt')
+load('../data/embeddings/glove.6B.100d.txt')

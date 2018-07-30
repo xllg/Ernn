@@ -57,7 +57,7 @@ class StackedBRNN(nn.Module):
     def _forward_unpadded(self, x, x_mask):
         """Faster encoding that ignores any padding"""
         # Transpose batch and sequence dims
-        x = x.transpose(0,1)
+        x = x.transpose(0, 1)
 
         # Encode all layers
         outputs = [x]
@@ -69,11 +69,11 @@ class StackedBRNN(nn.Module):
                 rnn_input = F.dropout(rnn_input, p=self.dropout_rate, training=self.training)
             # Forward
             rnn_output = self.rnns[i](rnn_input)[0]  # H(x, W_h)
-            # if i > 0:  # highway
-            #     trans_gate = F.sigmoid(self.trans[i](rnn_input))  # T(x, W_h)
-            #     highway_one = torch.mul(rnn_output, trans_gate)  # H(x, W_h) * T(x, W_h)
-            #     highway_two = torch.mul(rnn_input, 1 - trans_gate)  # x * (1 - T(x, W_h))
-            #     rnn_output = torch.add(highway_one, highway_two)  # H(x, W_h) * T(x, W_h) + x * (1 - T(x, W_h))
+            if i > 0:  # highway
+                trans_gate = F.sigmoid(self.trans[i](rnn_input))  # T(x, W_h)
+                highway_one = torch.mul(rnn_output, trans_gate)  # H(x, W_h) * T(x, W_h)
+                highway_two = torch.mul(rnn_input, 1 - trans_gate)  # x * (1 - T(x, W_h))
+                rnn_output = torch.add(highway_one, highway_two)  # H(x, W_h) * T(x, W_h) + x * (1 - T(x, W_h))
             outputs.append(rnn_output)
 
         # Concat hidden layers
@@ -83,7 +83,7 @@ class StackedBRNN(nn.Module):
             output = outputs[-1]
 
         # Transpose back
-        output = output.transpose(0,1)
+        output = output.transpose(0, 1)
 
         # Dropout on output layer
         if self.dropout_output and self.dropout_rate > 0:
@@ -128,11 +128,11 @@ class StackedBRNN(nn.Module):
                                       training=self.training)
                 rnn_input = nn.utils.rnn.PackedSequence(dropout_input, rnn_input.batch_sizes)
             rnn_output = self.rnns[i](rnn_input)[0]  # H(x, W_h)
-            # if i > 0:  # highway
-            #     trans_gate = F.sigmoid(self.trans[i](rnn_input[0]))  # T(x, W_h)
-            #     highway_one = torch.mul(rnn_output[0], trans_gate)  # H(x, W_h) * T(x, W_h)
-            #     highway_two = torch.mul(rnn_input[0], 1 - trans_gate)  # x * (1 - T(x, W_h))
-            #     rnn_output[0].data = torch.add(highway_one, highway_two).data  # H(x, W_h) * T(x, W_h) + x * (1 - T(x, W_h))
+            if i > 0:  # highway
+                trans_gate = F.sigmoid(self.trans[i](rnn_input[0]))  # T(x, W_h)
+                highway_one = torch.mul(rnn_output[0], trans_gate)  # H(x, W_h) * T(x, W_h)
+                highway_two = torch.mul(rnn_input[0], 1 - trans_gate)  # x * (1 - T(x, W_h))
+                rnn_output[0].data = torch.add(highway_one, highway_two).data  # H(x, W_h) * T(x, W_h) + x * (1 - T(x, W_h))
             outputs.append(rnn_output)
 
         # Unpack everything
@@ -234,15 +234,18 @@ class CharLSTM(nn.Module):
         # self.qesf2char = hw(self.hidden_size)
         # self.qesb2char = hw(self.hidden_size)
 
-        self.doc_init = nn.Linear(self.hidden_size * 2, self.hidden_size)
-        self.qes_init = nn.Linear(self.hidden_size * 2, self.hidden_size)
+        self.docfb2char = hw(self.hidden_size * 2, num_layers=1, dropout_ratio=self.dropout)
+        self.qesfb2char = hw(self.hidden_size * 2, num_layers=1, dropout_ratio=self.dropout)
+
+        # self.doc_init = nn.Linear(self.hidden_size * 2, self.hidden_size)
+        # self.qes_init = nn.Linear(self.hidden_size * 2, self.hidden_size)
 
     def forward(self, d_f, d_f_p, d_b, d_b_p, q_f, q_f_p, q_b, q_b_p):
         # lstm计算字符向量
-        d_f_lo, _ = self.cdfl(d_f)
-        d_b_lo, _ = self.cdbl(d_b)
-        q_f_lo, _ = self.cqfl(q_f)
-        q_b_lo, _ = self.cqbl(q_b)
+        d_f_lo, _ = self.cdfl(d_f.transpose(0,1))
+        d_b_lo, _ = self.cdbl(d_b.transpose(0,1))
+        q_f_lo, _ = self.cqfl(q_f.transpose(0,1))
+        q_b_lo, _ = self.cqbl(q_b.transpose(0,1))
 
         # highway network
         # d_f_lo = self.docf2char(d_f_lo, d_f)
@@ -252,35 +255,55 @@ class CharLSTM(nn.Module):
 
         # 根据每个结尾字符的位置，取得隐藏层状态
         # -------------文章----------------
-        d_f_p = d_f_p.unsqueeze(2).expand(d_f_p.size(0), d_f_p.size(1), d_f_lo.size(2))
-        d_f_g = torch.gather(d_f_lo, 1, d_f_p)
-        d_b_p = d_b_p.unsqueeze(2).expand(d_b_p.size(0), d_b_p.size(1), d_b_lo.size(2))
-        d_b_g = torch.gather(d_b_lo, 1, d_b_p)
+        d_f_p = d_f_p.unsqueeze(2).expand(d_f_p.size(0), d_f_p.size(1), d_f_lo.size(2)).transpose(0,1)
+        d_f_g = torch.gather(d_f_lo, 0, d_f_p).transpose(0,1)
+        d_b_p = d_b_p.unsqueeze(2).expand(d_b_p.size(0), d_b_p.size(1), d_b_lo.size(2)).transpose(0,1)
+        d_b_g = torch.gather(d_b_lo, 0, d_b_p)
 
         # -------------问题----------------
-        q_f_p = q_f_p.unsqueeze(2).expand(q_f_p.size(0), q_f_p.size(1), q_f_lo.size(2))
-        q_f_g = torch.gather(q_f_lo, 1, q_f_p)
-        q_b_p = q_b_p.unsqueeze(2).expand(q_b_p.size(0), q_b_p.size(1), q_b_lo.size(2))
-        q_b_g = torch.gather(q_b_lo, 1, q_b_p)
+        q_f_p = q_f_p.unsqueeze(2).expand(q_f_p.size(0), q_f_p.size(1), q_f_lo.size(2)).transpose(0,1)
+        q_f_g = torch.gather(q_f_lo, 0, q_f_p).transpose(0,1)
+        q_b_p = q_b_p.unsqueeze(2).expand(q_b_p.size(0), q_b_p.size(1), q_b_lo.size(2)).transpose(0,1)
+        q_b_g = torch.gather(q_b_lo, 0, q_b_p)
 
         # 将反向结果进行倒序
-        d_b_g = trilone(d_b_g)
-        q_b_g = trilone(q_b_g)
+        d_b_g = trilone(d_b_g.transpose(0,1))
+        q_b_g = trilone(q_b_g.transpose(0,1))
 
         # 将前向和反向编码通过linear整合
-        doc_char_emb = F.dropout(F.relu(self.doc_init(torch.cat([d_f_g, d_b_g], 2))), p=self.dropout)
-        qes_char_emb = F.dropout(F.relu(self.qes_init(torch.cat([q_f_g, q_b_g], 2))), p=self.dropout)
+        # doc_char_emb = F.dropout(F.relu(self.doc_init(torch.cat([d_f_g, d_b_g], 2))), p=self.dropout)
+        # qes_char_emb = F.dropout(F.relu(self.qes_init(torch.cat([q_f_g, q_b_g], 2))), p=self.dropout)
+
+        doc_char_emb = F.dropout(self.docfb2char(torch.cat([d_f_g, d_b_g], 2)))
+        qes_char_emb = F.dropout(self.qesfb2char(torch.cat([q_f_g, q_b_g], 2)))
 
         return doc_char_emb, qes_char_emb
 
 class hw(nn.Module):
-    def __init__(self, size):
+    def __init__(self, size, num_layers, dropout_ratio):
         super(hw, self).__init__()
-        self.trans = nn.Linear(size, size)
+        self.size = size
+        self.num_layers = num_layers
+        self.trans = nn.ModuleList()
+        self.gate = nn.ModuleList()
+        self.dropout = nn.Dropout(p=dropout_ratio)
 
-    def forward(self, h_x, x):
-        t = F.sigmoid(self.trans(x))
-        x = h_x * t + (1 - t) * x
+        for i in range(num_layers):
+            tmptrans = nn.Linear(size, size)
+            tmpgate = nn.Linear(size, size)
+            self.trans.append(tmptrans)
+            self.gate.append(tmpgate)
+
+    def forward(self, x):
+        g = F.sigmoid(self.gate[0](x))
+        h = F.relu(self.trans[0](x))
+        x = g * h + (1 - g) * x
+
+        for i in range(1, self.num_layers):
+            x = self.dropout(x)
+            g = F.sigmoid(self.gate[0](x))
+            h = F.relu(self.trans[0](x))
+            x = g * h + (1 - g) * x
         return x
 
 class BilinearSeqAttn(nn.Module):
