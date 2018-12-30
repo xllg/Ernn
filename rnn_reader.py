@@ -26,7 +26,7 @@ class RnnDocReader(nn.Module):
             self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
 
         # Input size to RNN: word emb + question emb +manual features
-        doc_input_size = args.embedding_dim + args.num_features
+        doc_input_size = args.embedding_dim + args.num_features + 1024
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
@@ -79,7 +79,7 @@ class RnnDocReader(nn.Module):
             normalize=normalize,
         )
 
-    def forward(self, x1, x1_f, x1_mask, x2, x2_mask):
+    def forward(self, x1, x1_f, docs_embeddings, x1_mask, x2, qes_embeddings, x2_mask):
         """Inputs:
         x1 = document word indices             [batch * len_d]
         x1_f = document word features indices  [batch * len_d * nfeat]
@@ -99,7 +99,7 @@ class RnnDocReader(nn.Module):
                                            training=self.training)
 
         # Form document encoding inputs
-        drnn_input = [x1_emb]
+        drnn_input = [x1_emb, docs_embeddings]
 
         # Add attention-weighted question representation
         if self.args.use_qemb:

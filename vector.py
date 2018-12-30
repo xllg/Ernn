@@ -4,12 +4,20 @@ Functions for putting examples into torch format.
 
 from collections import Counter
 import torch
+from allennlp.commands.elmo import ElmoEmbedder
+
+options_file = "../data/datasets/elmo_2x4096_512_2048cnn_2xhighway_options.json"
+weight_file = "../data/datasets/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5"
 
 def vectorize(ex, model, single_answer=False):
     """Torchify a single example"""
     args = model.args
     word_dict = model.word_dict
     feature_dict = model.feature_dict
+
+    # Elmo_sentences
+    document_sen = ex['document']
+    question_sen = ex['question']
 
     # Index words
     document = torch.LongTensor([word_dict[w] for w in ex['document']])
@@ -68,7 +76,7 @@ def vectorize(ex, model, single_answer=False):
         start = [a[0] for a in ex['answers']]
         end = [a[1] for a in ex['answers']]
 
-    return document, features, question, start, end, ex['id']
+    return document, features, question, start, end, document_sen, question_sen, ex['id']
 
 
 def batchify(batch):
@@ -77,7 +85,7 @@ def batchify(batch):
     :param batch:
     :return:
     """
-    NUM_INPUTS = 3
+    NUM_INPUTS = 5
     NUM_TARGETS = 2
     NUM_EXTRA = 1
 
@@ -85,6 +93,8 @@ def batchify(batch):
     docs = [ex[0] for ex in batch]
     features = [ex[1] for ex in batch]
     questions = [ex[2] for ex in batch]
+    docs_sen = [ex[5] for ex in batch]
+    qws_sen = [ex[6] for ex in batch]
 
     # Batch documents and features
     max_length = max([d.size(0) for d in docs])
@@ -108,7 +118,12 @@ def batchify(batch):
         x2[i, :q.size(0)].copy_(q)
         x2_mask[i, :q.size(0)].fill_(0)
 
-        # Maybe return without targets
+    # Batch Elmo embeddings
+    elmo = ElmoEmbedder(options_file, weight_file)
+    docs_embeddings = elmo.batch_to_embeddings(docs_sen)
+    qes_embeddings = elmo.batch_to_embeddings(docs_sen)
+
+    # Maybe return without targets
     if len(batch[0]) == NUM_INPUTS + NUM_EXTRA:
         return x1, x1_f, x1_mask, x2, x2_mask, ids
 
@@ -123,4 +138,4 @@ def batchify(batch):
     else:
         raise RuntimeError('Incorrect number of inputs per example.')
 
-    return x1, x1_f, x1_mask, x2, x2_mask, y_s, y_e, ids
+    return x1, x1_f, docs_embeddings, x1_mask, x2, qes_embeddings, x2_mask, y_s, y_e, ids
