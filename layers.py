@@ -219,6 +219,12 @@ class CharCNN(nn.Module):
 
         self.layers = nn.ModuleList([nn.Linear(self.n_filters, self.n_filters * 2)
                                             for _ in range(2)])
+        for layer in self.layers:
+            # We should bias the highway layer to just carry its input forward.  We do that by
+            # setting the bias on `B(x)` to be positive, because that means `g` will be biased to
+            # be high, to we will carry the input forward.  The bias on `B(x)` is the second half
+            # of the bias vector in each Linear layer.
+            layer.bias[self.n_filters:].data.fill_(1)
 
         self.highways = Highway(self.n_filters, self.n_highway, activation=torch.nn.functional.relu)
 
