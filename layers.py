@@ -230,13 +230,25 @@ class CharCNN(nn.Module):
         # self.highways = Highway(self.n_filters, self.n_highway, activation=torch.nn.functional.relu)
 
 
-    def forward(self, input, size):
-        c = self.cnn(input)
-        cnn_out = c.squeeze(1).view(size, -1, 72)
-        h_o = F.relu(self.linear(cnn_out))
-        t_o = F.sigmoid(self.transf(cnn_out))
-        output = t_o * h_o + (1 - t_o) * cnn_out
-        return output
+    def forward(self, input):
+        character_embedding = input.transpose(1, 2)
+        convs = []
+        for i in range(len(self.convolutions)):
+            convolved = self.convolutions[i](character_embedding)
+            # (batch_size * sequence_length, n_filters for this width)
+            convolved, _ = torch.max(convolved, dim=-1)
+            convolved = F.relu(convolved)
+            convs.append(convolved)
+        char_emb = torch.cat(convs, dim=-1)
+
+
+        # char_emb = self.highways(char_emb)
+        # c = self.cnn(input)
+        # cnn_out = c.squeeze(1).view(size, -1, 72)
+        # h_o = F.relu(self.linear(cnn_out))
+        # t_o = F.sigmoid(self.transf(cnn_out))
+        # output = t_o * h_o + (1 - t_o) * cnn_out
+        # return output
 
 class LinearGated(nn.Module):
     def __init__(self, input_size):

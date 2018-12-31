@@ -112,7 +112,7 @@ class RnnDocReader(nn.Module):
         x2_emb = self.embedding(x2)
 
         x1_char_emb = self.char_embedding(x1_char.view(-1, x1_char.size(-1)))
-        x1_char_emb = self.charCNN(x1_char_emb, x1_char.size(0))
+        x1_char_emb = self.charCNN(x1_char_emb)
 
         x2_char_emb = self.char_embedding(x2_char.view(-1, x2_char.size(-1)))
         x2_char_emb = self.charCNN(x2_char_emb, x2_char.size(0))
