@@ -203,15 +203,18 @@ class CharCNN(nn.Module):
     def __init__(self, max_clen):
         super(CharCNN, self).__init__()
         filters = [[1, 32], [2, 32], [3, 64], [4, 128], [5, 256], [6, 512], [7, 1024]]
-        for i, (num, width) in enumerate(filters):
+        self.convolutions = []
+        for i, (width, num) in enumerate(filters):
+            conv = torch.nn.Conv1d(
+                in_channels=max_clen,  # input_height
+                out_channels=num,  # n_filter
+                kernel_size=width,  # filter_size
+                bias=True
+            )
+            self.convolutions.append(conv)
+        self.convolutions = nn.ModuleList(self.convolutions)
 
-        self.cnn = nn.Sequential(  # input shape (2688, 37, 300)
-            nn.Conv1d(max_clen, 1, 11, stride=2, padding=1),  # output shape (2688, 1, 146)
-            nn.ReLU(),  # activation
-            nn.MaxPool1d(5, 2, 1),  # output shape (2688, 1, 72)
-        )
-        self.linear = nn.Linear(72, 72)
-        self.transf = nn.Linear(72, 72)
+
     def forward(self, input, size):
         c = self.cnn(input)
         cnn_out = c.squeeze(1).view(size, -1, 72)
