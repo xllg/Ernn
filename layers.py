@@ -214,6 +214,11 @@ class CharCNN(nn.Module):
             self.convolutions.append(conv)
         self.convolutions = nn.ModuleList(self.convolutions)
 
+        self.n_filters = sum(f[1] for f in filters)
+        self.n_highway = 2
+
+        self.highways = Highway(self.n_filters, self.n_highway, activation=torch.nn.functional.relu)
+
 
     def forward(self, input, size):
         c = self.cnn(input)
