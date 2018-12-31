@@ -115,7 +115,7 @@ class RnnDocReader(nn.Module):
         x1_char_emb = self.charCNN(x1_char_emb)
 
         x2_char_emb = self.char_embedding(x2_char.view(-1, x2_char.size(-1)))
-        x2_char_emb = self.charCNN(x2_char_emb, x2_char.size(0))
+        x2_char_emb = self.charCNN(x2_char_emb)
 
         # Dropout on embeddings
         if self.args.dropout_emb > 0:
