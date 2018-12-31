@@ -219,6 +219,7 @@ class CharCNN(nn.Module):
         ## High Way Networks
         self.layers = nn.ModuleList([nn.Linear(self.n_filters, self.n_filters * 2)
                                             for _ in range(2)])
+        self.input_dim = self.n_filters
         for layer in self.layers:
             # We should bias the highway layer to just carry its input forward.  We do that by
             # setting the bias on `B(x)` to be positive, because that means `g` will be biased to
@@ -239,15 +240,18 @@ class CharCNN(nn.Module):
             convs.append(convolved)
         char_emb = torch.cat(convs, dim=-1)
 
+        for layer in self.layers:
+            projected_input = layer(char_emb)
+            linear_part = char_emb
+            # NOTE: if you modify this, think about whether you should modify the initialization
+            # above, too.
+            nonlinear_part = projected_input[:, (0 * self.input_dim):(1 * self.input_dim)]
+            gate = projected_input[:, (1 * self.input_dim):(2 * self.input_dim)]
+            nonlinear_part = F.relu(nonlinear_part)
+            gate = F.sigmoid(gate)
+            char_emb = gate * linear_part + (1 - gate) * nonlinear_part
 
-
-        # char_emb = self.highways(char_emb)
-        # c = self.cnn(input)
-        # cnn_out = c.squeeze(1).view(size, -1, 72)
-        # h_o = F.relu(self.linear(cnn_out))
-        # t_o = F.sigmoid(self.transf(cnn_out))
-        # output = t_o * h_o + (1 - t_o) * cnn_out
-        # return output
+        return char_emb
 
 class LinearGated(nn.Module):
     def __init__(self, input_size):
