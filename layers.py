@@ -217,6 +217,9 @@ class CharCNN(nn.Module):
         self.n_filters = sum(f[1] for f in filters)
         self.n_highway = 2
 
+        self.layers = nn.ModuleList([nn.Linear(self.n_filters, self.n_filters * 2)
+                                            for _ in range(2)])
+
         self.highways = Highway(self.n_filters, self.n_highway, activation=torch.nn.functional.relu)
 
 
