@@ -227,8 +227,6 @@ class CharCNN(nn.Module):
             # of the bias vector in each Linear layer.
             layer.bias[self.n_filters:].data.fill_(1)
 
-        # self.highways = Highway(self.n_filters, self.n_highway, activation=torch.nn.functional.relu)
-
     def forward(self, input):
         character_embedding = input.transpose(1, 2)
         convs = []
