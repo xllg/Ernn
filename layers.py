@@ -156,7 +156,6 @@ class SeqAttnMatch(nn.Module):
     * o_i = sum(alpha_j * y_j) for i in X
     * alpha_j = softmax(y_j * x_i)
     """
-
     def __init__(self,input_size,identity=False):
         super(SeqAttnMatch, self).__init__()
         if not identity:
@@ -164,7 +163,7 @@ class SeqAttnMatch(nn.Module):
         else:
             self.linear = None
 
-    def forward(self,x,y,y_mask):
+    def forward(self, x, y, y_mask):
         """
         :param x: batch * len1 * hdim
         :param y: batch * len2 * hdim
@@ -200,13 +199,13 @@ class SeqAttnMatch(nn.Module):
         return matched_seq
 
 class CharCNN(nn.Module):
-    def __init__(self, max_clen):
+    def __init__(self, emb_dim):
         super(CharCNN, self).__init__()
         filters = [[1, 32], [2, 32], [3, 64], [4, 128], [5, 256], [6, 512], [7, 1024]]
         self.convolutions = []
         for i, (width, num) in enumerate(filters):
             conv = torch.nn.Conv1d(
-                in_channels=max_clen,  # input_height
+                in_channels=emb_dim,  # input_height
                 out_channels=num,  # n_filter
                 kernel_size=width,  # filter_size
                 bias=True
@@ -229,7 +228,6 @@ class CharCNN(nn.Module):
 
         # self.highways = Highway(self.n_filters, self.n_highway, activation=torch.nn.functional.relu)
 
-
     def forward(self, input):
         character_embedding = input.transpose(1, 2)
         convs = []
@@ -240,6 +238,7 @@ class CharCNN(nn.Module):
             convolved = F.relu(convolved)
             convs.append(convolved)
         char_emb = torch.cat(convs, dim=-1)
+
 
 
         # char_emb = self.highways(char_emb)
