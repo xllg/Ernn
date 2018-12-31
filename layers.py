@@ -217,6 +217,7 @@ class CharCNN(nn.Module):
         self.n_filters = sum(f[1] for f in filters)
         self.n_highway = 2
 
+        ## High Way Networks
         self.layers = nn.ModuleList([nn.Linear(self.n_filters, self.n_filters * 2)
                                             for _ in range(2)])
         for layer in self.layers:
@@ -226,7 +227,7 @@ class CharCNN(nn.Module):
             # of the bias vector in each Linear layer.
             layer.bias[self.n_filters:].data.fill_(1)
 
-        self.highways = Highway(self.n_filters, self.n_highway, activation=torch.nn.functional.relu)
+        # self.highways = Highway(self.n_filters, self.n_highway, activation=torch.nn.functional.relu)
 
 
     def forward(self, input, size):
