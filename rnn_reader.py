@@ -34,7 +34,7 @@ class RnnDocReader(nn.Module):
         self.charCNN = layers.CharCNN(args.embedding_dim)
 
         # Input size to RNN: word emb + question emb +manual features + char emb
-        doc_input_size = args.embedding_dim + args.num_features + 72
+        doc_input_size = args.embedding_dim + args.num_features + args.embedding_dim
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
@@ -52,7 +52,7 @@ class RnnDocReader(nn.Module):
 
         # RNN question encoder
         self.question_rnn = layers.StackedBRNN(
-            input_size=args.embedding_dim + 72,
+            input_size=args.embedding_dim + args.embedding_dim,
             hidden_size=args.hidden_size,
             num_layers=args.question_layers,
             dropout_rate=args.dropout_rnn,

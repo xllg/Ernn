@@ -227,7 +227,7 @@ class CharCNN(nn.Module):
             # of the bias vector in each Linear layer.
             layer.bias[self.n_filters:].data.fill_(1)
 
-        self.projection = nn.Linear(self.input_dim, emb_dim)
+        self.projection = nn.Linear(self.input_dim, emb_dim, bias=True)
 
     def forward(self, input):
         character_embedding = input.transpose(1, 2)
@@ -251,7 +251,7 @@ class CharCNN(nn.Module):
             gate = F.sigmoid(gate)
             char_emb = gate * linear_part + (1 - gate) * nonlinear_part
 
-        return char_emb
+        return self.projection(char_emb)
 
 class LinearGated(nn.Module):
     def __init__(self, input_size):
