@@ -52,7 +52,7 @@ class RnnDocReader(nn.Module):
 
         # RNN question encoder
         self.question_rnn = layers.StackedBRNN(
-            input_size=args.embedding_dim + args.embedding_dim,
+            input_size=args.embedding_dim,
             hidden_size=args.hidden_size,
             num_layers=args.question_layers,
             dropout_rate=args.dropout_rnn,
@@ -114,8 +114,8 @@ class RnnDocReader(nn.Module):
         x1_char_emb = self.char_embedding(x1_char.view(-1, x1_char.size(-1)))
         x1_char_emb = self.charCNN(x1_char_emb).view(x1.size(0), -1, self.args.embedding_dim)
 
-        x2_char_emb = self.char_embedding(x2_char.view(-1, x2_char.size(-1)))
-        x2_char_emb = self.charCNN(x2_char_emb).view(x2.size(0), -1, self.args.embedding_dim)
+        #x2_char_emb = self.char_embedding(x2_char.view(-1, x2_char.size(-1)))
+        #x2_char_emb = self.charCNN(x2_char_emb).view(x2.size(0), -1, self.args.embedding_dim)
 
         # Dropout on embeddings
         if self.args.dropout_emb > 0:
@@ -145,7 +145,7 @@ class RnnDocReader(nn.Module):
         doc_hiddens = self.doc_rnn(torch.cat(drnn_input, 2), x1_mask)
 
         # Encode question with RNN + merge hiddens
-        question_hiddens = self.question_rnn(torch.cat([x2_emb, x2_char_emb], 2), x2_mask)
+        question_hiddens = self.question_rnn(x2_emb, x2_mask)
         if self.args.question_merge == 'avg':
             q_merge_weights = layers.uniform_weights(question_hiddens, x2_mask)
         elif self.args.question_merge == 'self_attn':
