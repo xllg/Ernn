@@ -101,15 +101,15 @@ def load_char_words(args, examples):
         for word in iterable:
             for char in word:
                 char = Dictionary.normalize(char)
-                if valid_words and char not in valid_words:
-                    continue
+                # if valid_words and char not in valid_words:
+                #     continue
                 charts.add(char)
-    if args.restrict_vocab and args.embedding_file:
-        logger.info('Restricting to words in %s' % args.char_embedding_file)
-        valid_words = index_embedding_words(args.char_embedding_file)
-        logger.info('Num words in set = %d' % len(valid_words))
-    else:
-        valid_words = None
+    # if args.restrict_vocab and args.embedding_file:
+    #     logger.info('Restricting to words in %s' % args.char_embedding_file)
+    #     valid_words = index_embedding_words(args.char_embedding_file)
+    #     logger.info('Num words in set = %d' % len(valid_words))
+    # else:
+    #     valid_words = None
 
     charts = set()
     for ex in examples:

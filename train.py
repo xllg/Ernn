@@ -45,7 +45,7 @@ def add_train_args(parser):
                          help='Run on a specific GPU')
     runtime.add_argument('--data-workers', type=int, default=5,
                          help='Number of subprocesses for data loading')
-    runtime.add_argument('--parallel', type='bool', default=True,
+    runtime.add_argument('--parallel', type='bool', default=False,
                          help='Use DataParallel on all available GPUs')
     runtime.add_argument('--random-seed', type=int, default=1013,
                          help=('Random seed for all numpy/torch/cuda '
@@ -201,8 +201,8 @@ def init_from_scratch(args, train_exs, dev_exs):
     # Load pretrained embeddings for words in dictionary
     if args.embedding_file:
         model.load_embeddings(word_dict.tokens(), args.embedding_file)
-    if args.char_embedding_file:
-        model.load_char_embeddings(char_dict.tokens(), args.char_embedding_file)
+    # if args.char_embedding_file:
+    #     model.load_char_embeddings(char_dict.tokens(), args.char_embedding_file)
 
     return model
 

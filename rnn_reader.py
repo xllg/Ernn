@@ -24,17 +24,18 @@ class RnnDocReader(nn.Module):
 
         # Char embedding (+1 forpadding)
         self.char_embedding = nn.Embedding(args.char_size,
-                                      args.embedding_dim,
+                                      args.char_embedding_dim,
                                       padding_idx=0)
 
         # Projection for attention weighted question
         if args.use_qemb:
             self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
 
-        self.charCNN = layers.CharCNN(args.embedding_dim)
+        self.char_out_dim = 180
+        self.charCNN = layers.CharCNN(self.args.char_embedding_dim, self.char_out_dim)
 
         # Input size to RNN: word emb + question emb +manual features + char emb
-        doc_input_size = args.embedding_dim + args.num_features + args.embedding_dim
+        doc_input_size = args.embedding_dim + args.num_features + self.char_out_dim
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
@@ -112,7 +113,6 @@ class RnnDocReader(nn.Module):
         x2_emb = self.embedding(x2)
 
         x1_char_emb = self.char_embedding(x1_char.view(-1, x1_char.size(-1)))
-        x1_char_emb = self.charCNN(x1_char_emb).view(x1.size(0), -1, self.args.embedding_dim)
 
         #x2_char_emb = self.char_embedding(x2_char.view(-1, x2_char.size(-1)))
         #x2_char_emb = self.charCNN(x2_char_emb).view(x2.size(0), -1, self.args.embedding_dim)
@@ -123,10 +123,12 @@ class RnnDocReader(nn.Module):
                                            training=self.training)
             x2_emb = nn.functional.dropout(x2_emb, p=self.args.dropout_emb,
                                            training=self.training)
-            # x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
-            #                                training=self.training)
+            x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
+                                           training=self.training)
             # x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
             #                                training=self.training)
+
+        x1_char_emb = self.charCNN(x1_char_emb).view(x1.size(0), -1, self.char_out_dim)
 
         # Form document encoding inputs
         drnn_input = [x1_emb]

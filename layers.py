@@ -199,13 +199,13 @@ class SeqAttnMatch(nn.Module):
         return matched_seq
 
 class CharCNN(nn.Module):
-    def __init__(self, emb_dim):
+    def __init__(self, in_emb_dim, out_emb_dim):
         super(CharCNN, self).__init__()
-        filters = [[1, 32], [2, 32], [3, 64], [4, 128], [5, 256], [6, 512], [7, 1024]]
+        filters = [[1, 15], [2, 35], [3, 55], [4, 75]]
         self.convolutions = []
         for i, (width, num) in enumerate(filters):
             conv = torch.nn.Conv1d(
-                in_channels=emb_dim,  # input_height
+                in_channels=in_emb_dim,  # input_height
                 out_channels=num,  # n_filter
                 kernel_size=width,  # filter_size
                 bias=True
@@ -214,12 +214,11 @@ class CharCNN(nn.Module):
         self.convolutions = nn.ModuleList(self.convolutions)
 
         self.n_filters = sum(f[1] for f in filters)
-        self.n_highway = 2
+        self.n_highway = 1
 
         ## High Way Networks
         self.layers = nn.ModuleList([nn.Linear(self.n_filters, self.n_filters * 2)
                                             for _ in range(2)])
-        self.input_dim = self.n_filters
         for layer in self.layers:
             # We should bias the highway layer to just carry its input forward.  We do that by
             # setting the bias on `B(x)` to be positive, because that means `g` will be biased to
@@ -227,7 +226,7 @@ class CharCNN(nn.Module):
             # of the bias vector in each Linear layer.
             layer.bias[self.n_filters:].data.fill_(1)
 
-        self.projection = nn.Linear(self.input_dim, emb_dim, bias=True)
+        # self.projection = nn.Linear(self.n_filters, out_emb_dim, bias=True)
 
     def forward(self, input):
         character_embedding = input.transpose(1, 2)
@@ -240,18 +239,21 @@ class CharCNN(nn.Module):
             convs.append(convolved)
         char_emb = torch.cat(convs, dim=-1)
 
+        # Highway:  y = H(x, W) * T(x, W) + x * (1 - T(x, W))
+        # Transform: T(x, W) 转换部分
+        # Carray: (1 - T(x, W)) 原始数据
         for layer in self.layers:
-            projected_input = layer(char_emb)
-            linear_part = char_emb
+            projected_input = layer(char_emb) # 被转换部分 140 ---> 280
+            linear_part = char_emb  # 原始输入数据
             # NOTE: if you modify this, think about whether you should modify the initialization
             # above, too.
-            nonlinear_part = projected_input[:, (0 * self.input_dim):(1 * self.input_dim)]
-            gate = projected_input[:, (1 * self.input_dim):(2 * self.input_dim)]
+            nonlinear_part = projected_input[:, (0 * self.n_filters):(1 * self.n_filters)]
+            gate = projected_input[:, (1 * self.n_filters):(2 * self.n_filters)]
             nonlinear_part = F.relu(nonlinear_part)
             gate = F.sigmoid(gate)
             char_emb = gate * linear_part + (1 - gate) * nonlinear_part
 
-        return self.projection(char_emb)
+        return char_emb
 
 class LinearGated(nn.Module):
     def __init__(self, input_size):
