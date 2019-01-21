@@ -201,7 +201,7 @@ class SeqAttnMatch(nn.Module):
 class CharCNN(nn.Module):
     def __init__(self, in_emb_dim, out_emb_dim):
         super(CharCNN, self).__init__()
-        filters = [[1, 15], [2, 35], [3, 55], [4, 75]]
+        filters = [[1, 8], [2, 16], [3, 32], [4, 64]]
         self.convolutions = []
         for i, (width, num) in enumerate(filters):
             conv = torch.nn.Conv1d(

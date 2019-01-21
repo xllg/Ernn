@@ -31,7 +31,7 @@ class RnnDocReader(nn.Module):
         if args.use_qemb:
             self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
 
-        self.char_out_dim = 180
+        self.char_out_dim = 120
         self.charCNN = layers.CharCNN(self.args.char_embedding_dim, self.char_out_dim)
 
         # Input size to RNN: word emb + question emb +manual features + char emb
