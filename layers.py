@@ -201,59 +201,54 @@ class SeqAttnMatch(nn.Module):
 class CharCNN(nn.Module):
     def __init__(self, in_emb_dim, out_emb_dim):
         super(CharCNN, self).__init__()
-        filters = [[1, 8], [2, 16], [3, 32], [4, 64]]
+        self.in_emb_dim = in_emb_dim # 100
+        self.out_emb_dim = out_emb_dim
+        self.kernel_sizes = [1, 3, 5, 7] # kenel_size jishu
+        D = self.in_emb_dim
         self.convolutions = []
-        for i, (width, num) in enumerate(filters):
-            conv = torch.nn.Conv1d(
-                in_channels=in_emb_dim,  # input_height
-                out_channels=num,  # n_filter
-                kernel_size=width,  # filter_size
+        for K in self.kernel_sizes:
+            conv = nn.Conv2d(
+                in_channels=1,  # input_height
+                out_channels=D,  # n_filter
+                kernel_size=(K, D),  # filter_size
+                stride=(1, 1),
+                padding=(K // 2, 0),
+                dilation=1,
                 bias=True
             )
             self.convolutions.append(conv)
         self.convolutions = nn.ModuleList(self.convolutions)
 
-        self.n_filters = sum(f[1] for f in filters)
-        self.n_highway = 1
-
-        ## High Way Networks
-        self.layers = nn.ModuleList([nn.Linear(self.n_filters, self.n_filters * 2)
-                                            for _ in range(2)])
-        for layer in self.layers:
-            # We should bias the highway layer to just carry its input forward.  We do that by
-            # setting the bias on `B(x)` to be positive, because that means `g` will be biased to
-            # be high, to we will carry the input forward.  The bias on `B(x)` is the second half
-            # of the bias vector in each Linear layer.
-            layer.bias[self.n_filters:].data.fill_(1)
-
-        # self.projection = nn.Linear(self.n_filters, out_emb_dim, bias=True)
+        self.gate_layer = nn.Linear(self.in_emb_dim, self.in_emb_dim * len(self.kernel_sizes), bias=True)
+        self.fc1 = nn.Linear(self.in_emb_dim * len(self.kernel_sizes), self.out_emb_dim, bias=True)
 
     def forward(self, input):
-        character_embedding = input.transpose(1, 2)
+        character_embedding = input.unsqueeze(1)
         convs = []
         for i in range(len(self.convolutions)):
             convolved = self.convolutions[i](character_embedding)
             # (batch_size * sequence_length, n_filters for this width)
-            convolved, _ = torch.max(convolved, dim=-1)
-            convolved = F.relu(convolved)
+            # convolved, _ = torch.max(convolved, dim=-1)
+            convolved = F.relu(convolved).squeeze(3)
             convs.append(convolved)
-        char_emb = torch.cat(convs, dim=-1)
-
+        char_emb = torch.cat(convs, dim=1)
         # Highway:  y = H(x, W) * T(x, W) + x * (1 - T(x, W))
         # Transform: T(x, W) 转换部分
         # Carray: (1 - T(x, W)) 原始数据
-        for layer in self.layers:
-            projected_input = layer(char_emb) # 被转换部分 140 ---> 280
-            linear_part = char_emb  # 原始输入数据
-            # NOTE: if you modify this, think about whether you should modify the initialization
-            # above, too.
-            nonlinear_part = projected_input[:, (0 * self.n_filters):(1 * self.n_filters)]
-            gate = projected_input[:, (1 * self.n_filters):(2 * self.n_filters)]
-            nonlinear_part = F.relu(nonlinear_part)
-            gate = F.sigmoid(gate)
-            char_emb = gate * linear_part + (1 - gate) * nonlinear_part
 
-        return char_emb
+        normal_fc = torch.transpose(char_emb, 1, 2) # in the formula is the H
+
+        information_source = self.gate_layer(input)
+        transformation_layer = F.sigmoid(information_source) # in the formula is the T
+        allow_transformation = torch.mul(normal_fc, transformation_layer) # in the formula is the H * T
+
+        carry_layer = 1 - transformation_layer # in the formula is the (1 - T)
+        allow_carry = torch.mul(information_source, carry_layer) # in the formula is the x * (1 - T(x, W))
+        information_flow = torch.add(allow_transformation, allow_carry)
+
+        information_convert = self.fc1(information_flow)
+        # information_convert, _ = torch.max(information_convert.transpose(1, 2), dim=-1)
+        return information_convert
 
 class LinearGated(nn.Module):
     def __init__(self, input_size):
