@@ -199,11 +199,11 @@ class SeqAttnMatch(nn.Module):
         return matched_seq
 
 class CharCNN(nn.Module):
-    def __init__(self, in_emb_dim, out_emb_dim):
+    def __init__(self, in_emb_dim, c_len, out_emb_dim):
         super(CharCNN, self).__init__()
         self.in_emb_dim = in_emb_dim # 100
         self.out_emb_dim = out_emb_dim
-        self.kernel_sizes = [1, 3, 5, 7] # kenel_size jishu
+        self.kernel_sizes = [1, 3, 7, 9, 11, 15, 17] # kenel_size jishu
         D = self.in_emb_dim
         self.convolutions = []
         for K in self.kernel_sizes:
@@ -220,7 +220,7 @@ class CharCNN(nn.Module):
         self.convolutions = nn.ModuleList(self.convolutions)
 
         self.gate_layer = nn.Linear(self.in_emb_dim, self.in_emb_dim * len(self.kernel_sizes), bias=True)
-        self.fc1 = nn.Linear(self.in_emb_dim * len(self.kernel_sizes), self.out_emb_dim, bias=True)
+        self.fc1 = nn.Linear(self.in_emb_dim * c_len * len(self.kernel_sizes), self.out_emb_dim, bias=True)
 
     def forward(self, input):
         character_embedding = input.unsqueeze(1)
@@ -239,14 +239,15 @@ class CharCNN(nn.Module):
         normal_fc = torch.transpose(char_emb, 1, 2) # in the formula is the H
 
         information_source = self.gate_layer(input)
-        transformation_layer = F.sigmoid(information_source) # in the formula is the T
+        transformation_layer = F.tanh(information_source) # in the formula is the T
         allow_transformation = torch.mul(normal_fc, transformation_layer) # in the formula is the H * T
 
         carry_layer = 1 - transformation_layer # in the formula is the (1 - T)
         allow_carry = torch.mul(information_source, carry_layer) # in the formula is the x * (1 - T(x, W))
         information_flow = torch.add(allow_transformation, allow_carry)
 
-        information_convert = self.fc1(information_flow)
+        information_flow = information_flow.view(information_flow.size(0), -1)
+        information_convert = F.relu(self.fc1(information_flow))
         # information_convert, _ = torch.max(information_convert.transpose(1, 2), dim=-1)
         return information_convert
 

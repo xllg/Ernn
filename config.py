@@ -6,7 +6,7 @@ MODEL_ARCHITECTURE = {
     'model_type', 'embedding_dim', 'hidden_size', 'doc_layers',
     'question_layers', 'rnn_type', 'concat_rnn_layers', 'question_merge',
     'use_qemb', 'use_in_question', 'use_pos', 'use_ner', 'use_lemma', 'use_tf',
-    'cuda', 'max_clen', 'char_embedding_dim'
+    'cuda', 'char_max_len', 'char_embedding_dim', 'char_out_dim'
 }
 
 # Index of arguments concerning the model optimizer/training
@@ -29,8 +29,12 @@ def add_model_args(parser):
                        help='Model architecture type')
     model.add_argument('--embedding-dim', type=int, default=300,
                        help='Embedding size if embedding_file is not given')
-    model.add_argument('--char-embedding-dim', type=int, default=8,
+    model.add_argument('--char-embedding-dim', type=int, default=12,
                        help='Embedding size if embedding_file is not given')
+    model.add_argument('--char-max-len', type=int, default=18,
+                       help='max length of word')
+    model.add_argument('--char-out-dim', type=int, default=128,
+                       help='Embedding size off charCNN')
     model.add_argument('--hidden-size', type=int, default=128,
                        help='Hidden size of RNN units')
     model.add_argument('--doc-layers', type=int, default=2,
