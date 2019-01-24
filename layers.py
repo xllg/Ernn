@@ -203,7 +203,7 @@ class CharCNN(nn.Module):
         super(CharCNN, self).__init__()
         self.in_emb_dim = in_emb_dim # 100
         self.out_emb_dim = out_emb_dim
-        self.kernel_sizes = [1, 3, 7, 9, 11, 15, 17] # kenel_size jishu
+        self.kernel_sizes = [1, 3, 5, 7, 9, 11, 15, 17] # kenel_size jishu
         D = self.in_emb_dim
         self.convolutions = []
         for K in self.kernel_sizes:
