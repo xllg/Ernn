@@ -55,7 +55,7 @@ def sort_batch_by_length(tensor: torch.autograd.Variable,
     if not isinstance(tensor, Variable) or not isinstance(sequence_lengths, Variable):
         raise Exception("Both the tensor and sequence lengths must be torch.autograd.Variables.")
 
-    sorted_sequence_lengths, permutation_index = sequence_lengths.sort(0, descending=True) # 0维降序
+    sorted_sequence_lengths, permutation_index = sequence_lengths.sort(0, descending=True)  # 0维降序
     sorted_tensor = tensor.index_select(0, permutation_index)
 
     # This is ugly, but required - we are creating a new variable at runtime, so we
