@@ -14,7 +14,6 @@ from .lstm_cell_with_projection import LstmCellWithProjection
 RnnState = Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]  # pylint: disable=invalid-name
 RnnStateStorage = Tuple[torch.Tensor, ...]  # pylint: disable=invalid-name
 
-
 class ElmobiLm(_EncoderBase):
   def __init__(self, config, use_cuda=False):
     super(ElmobiLm, self).__init__(stateful=True)
