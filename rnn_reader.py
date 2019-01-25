@@ -112,6 +112,7 @@ class RnnDocReader(nn.Module):
         x2_emb = self.embedding(x2)
 
         x1_char_emb = self.char_embedding(x1_char.view(-1, x1_char.size(-1)))
+        x1_char_emb = self.charCNN(x1_char_emb).view(x1.size(0), x1.size(1), -1)
 
         #x2_char_emb = self.char_embedding(x2_char.view(-1, x2_char.size(-1)))
         #x2_char_emb = self.charCNN(x2_char_emb).view(x2.size(0), -1, self.args.embedding_dim)
@@ -127,11 +128,8 @@ class RnnDocReader(nn.Module):
             # x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
             #                                training=self.training)
 
-        x1_char_emb = self.charCNN(x1_char_emb).view(x1.size(0), x1.size(1), -1)
-
         # Form document encoding inputs
-        drnn_input = [x1_emb]
-        drnn_input.append(x1_char_emb)
+        drnn_input = [x1_emb, x1_char_emb]
 
         # Add attention-weighted question representation
         if self.args.use_qemb:
