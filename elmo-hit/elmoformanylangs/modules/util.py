@@ -56,7 +56,7 @@ def sort_batch_by_length(tensor: torch.autograd.Variable,
         raise Exception("Both the tensor and sequence lengths must be torch.autograd.Variables.")
 
     sorted_sequence_lengths, permutation_index = sequence_lengths.sort(0, descending=True)  # 0维降序
-    sorted_tensor = tensor.index_select(0, permutation_index)
+    sorted_tensor = tensor.index_select(0, permutation_index) # permutaion: zhihuan
 
     # This is ugly, but required - we are creating a new variable at runtime, so we
     # must ensure it has the correct CUDA vs non-CUDA type. We do this by cloning and
