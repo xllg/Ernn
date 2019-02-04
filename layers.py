@@ -71,12 +71,12 @@ class StackedBRNN(nn.Module):
 
         # Concat hidden layers
         if self.concat_layers:
-            output = torch.cat(outputs[1:],2)
+            output = torch.cat(outputs[1:], 2)
         else:
             output = outputs[-1]
 
         # Transpose back
-        output = output.transpose(0,1)
+        output = output.transpose(0, 1)
 
         # Dropout on output layer
         if self.dropout_output and self.dropout_rate > 0:
