@@ -29,8 +29,7 @@ class RnnDocReader(nn.Module):
 
         # Projection for attention weighted question
         if args.use_qemb:
-            self.qemb_match = layers.SeqAttnMatch(args.embedding_dim)
-
+            self.seq_match = layers.SeqAttnMatch(args.embedding_dim)
         self.charCNN = layers.CharCNN(args.char_embedding_dim, args.char_max_len, args.char_out_dim)
 
         # Input size to RNN: word emb + question emb +manual features + char emb
@@ -52,7 +51,7 @@ class RnnDocReader(nn.Module):
 
         # RNN question encoder
         self.question_rnn = layers.StackedBRNN(
-            input_size=args.embedding_dim,
+            input_size=args.embedding_dim * 2,
             hidden_size=args.hidden_size,
             num_layers=args.question_layers,
             dropout_rate=args.dropout_rnn,
@@ -73,10 +72,21 @@ class RnnDocReader(nn.Module):
         if args.question_merge not in ['avg', 'self_attn']:
             raise NotImplementedError('merge_mode = %s' % args.merge_mode)
         if args.question_merge == 'self_attn':
-            self.self_attn = layers.LinearSeqAttn(question_hidden_size)
+            self.qes_self_attn = layers.LinearSeqAttn(question_hidden_size)
 
         self.qes_gated = layers.LinearGated(doc_hidden_size)
-        self.gated_rnn = layers.StackedBRNN(
+        self.gated_qes_rnn = layers.StackedBRNN(
+            input_size=doc_hidden_size * 2,
+            hidden_size=args.hidden_size,
+            num_layers=args.doc_layers,  # 3
+            dropout_rate=args.dropout_rnn,
+            dropout_output=args.dropout_rnn_output,
+            concat_layers=args.concat_rnn_layers,
+            rnn_type=self.RNN_TYPES[args.rnn_type],
+            padding=args.rnn_padding,
+        )
+        self.doc_gated = layers.LinearGated(question_hidden_size)
+        self.gated_doc_rnn = layers.StackedBRNN(
             input_size=doc_hidden_size * 2,
             hidden_size=args.hidden_size,
             num_layers=args.doc_layers,  # 3
@@ -133,7 +143,8 @@ class RnnDocReader(nn.Module):
 
         # Add attention-weighted question representation
         if self.args.use_qemb:
-            x2_weighted_emb = self.qemb_match(x1_emb, x2_emb, x2_mask)
+            x1_weighted_emb = self.seq_match(x2_emb, x1_emb, x1_mask) # P2Q
+            x2_weighted_emb = self.seq_match(x1_emb, x2_emb, x2_mask) # Q2P
             drnn_input.append(x2_weighted_emb)
 
         # Add manual features
@@ -144,17 +155,21 @@ class RnnDocReader(nn.Module):
         doc_hiddens = self.doc_rnn(torch.cat(drnn_input, 2), x1_mask)
 
         # Encode question with RNN + merge hiddens
-        question_hiddens = self.question_rnn(x2_emb, x2_mask)
+        question_hiddens = self.question_rnn(torch.cat([x2_emb, x1_weighted_emb], 2), x2_mask)
+
+        gated_q2p_ct = self.qes_gated(doc_hiddens, question_hiddens, x2_mask)
+        gated_q2p_vp = self.gated_qes_rnn(gated_q2p_ct, x1_mask)
+
+        gated_p2q_ct = self.doc_gated(question_hiddens, doc_hiddens, x1_mask)
+        gated_p2q_vp = self.gated_doc_rnn(gated_p2q_ct, x2_mask)
+
         if self.args.question_merge == 'avg':
             q_merge_weights = layers.uniform_weights(question_hiddens, x2_mask)
         elif self.args.question_merge == 'self_attn':
-            q_merge_weights = self.self_attn(question_hiddens, x2_mask)
-        question_hidden = layers.weighted_avg(question_hiddens, q_merge_weights)
-
-        gated_ct = self.qes_gated(doc_hiddens, question_hiddens, x2_mask)  # y_mask
-        gated_vp = self.gated_rnn(gated_ct, x1_mask)
+            q_merge_weights = self.qes_self_attn(gated_p2q_vp, x2_mask)
+        question_hidden = layers.weighted_avg(gated_p2q_vp, q_merge_weights)
 
         # Predict start and end positions
-        start_scores = self.start_attn(gated_vp, question_hidden, x1_mask)
-        end_scores = self.end_attn(gated_vp, question_hidden, x1_mask)
+        start_scores = self.start_attn(gated_q2p_vp, question_hidden, x1_mask)
+        end_scores = self.end_attn(gated_q2p_vp, question_hidden, x1_mask)
         return start_scores, end_scores

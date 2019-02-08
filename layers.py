@@ -156,10 +156,12 @@ class SeqAttnMatch(nn.Module):
     * o_i = sum(alpha_j * y_j) for i in X
     * alpha_j = softmax(y_j * x_i)
     """
-    def __init__(self,input_size,identity=False):
+
+    def __init__(self, input_size, identity=False):
         super(SeqAttnMatch, self).__init__()
         if not identity:
-            self.linear = nn.Linear(input_size,input_size)
+            self.linear = nn.Linear(input_size, input_size)
+            self.linearcom = nn.Linear(input_size * 2, input_size)
         else:
             self.linear = None
 
@@ -170,7 +172,6 @@ class SeqAttnMatch(nn.Module):
         :param y_mask: batch * len2 (1 for padding,0 for true)
         :return: matched_seq:batch * len1 * hdim
         """
-
         # Project vectors
         if self.linear:
             x_proj = self.linear(x.view(-1, x.size(2))).view(x.size())
@@ -181,7 +182,7 @@ class SeqAttnMatch(nn.Module):
             x_proj = x
             y_proj = y
 
-        # Compute scores
+        # 将问题和文章意识加入到文章和问题:
         scores = x_proj.bmm(y_proj.transpose(2, 1))
 
         # Mask padding
@@ -192,10 +193,20 @@ class SeqAttnMatch(nn.Module):
 
         # Normalize with softmax
         alpha_flat = F.softmax(scores.view(-1, y.size(1)))
-        alpha = alpha_flat.view(-1, x.size(1), y.size(1))
+        alpha_flat = alpha_flat.view(-1, x.size(1), y.size(1))
+        matched_seq = alpha_flat.bmm(y)
 
-        # Take weighted average
-        matched_seq = alpha.bmm(y)
+        comb = torch.cat([matched_seq, x], 2)
+        seq = self.linearcom(comb.view(-1, comb.size(-1))).view(x.size())
+        matched_seq = F.relu(seq)
+        # 将文章意识加入到问题:
+        # scores_p = y_proj.bmm(x_proj.transpose(2, 1))
+        # x_mask = x_mask.unsqueeze(1).expand(scores_p.size())
+        # scores_p.data.masked_fill_(x_mask.data, -float('inf'))
+        # alpha_flat_p = F.softmax(scores_p.view(-1, x.size(1)))
+        # alpha_flat_p = alpha_flat_p.view(-1, y.size(1), x.size(1))
+        # matched_seq_p = alpha_flat_p.bmm(x)
+
         return matched_seq
 
 class CharCNN(nn.Module):
@@ -257,9 +268,8 @@ class LinearGated(nn.Module):
         self.linear = nn.Linear(input_size, input_size)
         self.gate = nn.Linear(input_size * 2, input_size * 2)
 
-    def forward(self, x, y, y_mask):  # y_mask
-        x_proj = self.linear(x.view(-1, x.size(2))).view(x.size())
-        x_proj = F.relu(x_proj)
+    def forward(self, x, y, y_mask):
+        x_proj = x
         y_proj = self.linear(y.view(-1, y.size(2))).view(y.size())
         y_proj = F.relu(y_proj)
 
@@ -329,9 +339,9 @@ class LinearSeqAttn(nn.Module):
 
     * o_i = softmax(Wx_i) for x_i in X.
     """
-
     def __init__(self, input_size):
         super(LinearSeqAttn, self).__init__()
+        self.linear1 = nn.Linear(input_size * 2, input_size)
         self.linear = nn.Linear(input_size, 1)
 
     def forward(self, x, x_mask):
@@ -342,8 +352,10 @@ class LinearSeqAttn(nn.Module):
         Output:
             alpha: batch * len
         """
-        x_flat = x.view(-1, x.size(-1))
-        scores = self.linear(x_flat).view(x.size(0), x.size(1))
+        combined = torch.cat((x, x), 2)
+        hidden = F.tanh(self.linear1(combined.view(-1, combined.size(-1))))
+        # x_flat = hidden.view(-1, x.size(-1))
+        scores = self.linear(hidden).view(x.size(0), x.size(1))
         scores.data.masked_fill_(x_mask.data, -float('inf'))
         alpha = F.softmax(scores)
         return alpha
@@ -379,7 +391,6 @@ def weighted_avg(x, weights):
         x_avg: batch * hdim
     """
     return weights.unsqueeze(1).bmm(x).squeeze(1)
-
 
 
 
