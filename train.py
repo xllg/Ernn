@@ -521,4 +521,11 @@ if __name__=='__main__': # 如果模块是被直接运行的，则代码块被�
     logger.info('COMMAND: %s' % ' '.join(sys.argv))
 
     # Run!
+    os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
+    memory_gpu = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
+    while memory_gpu[0] < 6000:
+        os.system('rm tmp')
+        os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
+        memory_gpu = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
+        # print("Wating GPU!")
     main(args)
