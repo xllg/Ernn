@@ -14,7 +14,7 @@ import logging
 import json
 
 from tqdm import tqdm
-from predict import Predictor
+from predictor import Predictor
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
