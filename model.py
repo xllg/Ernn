@@ -304,6 +304,19 @@ class DocReader(object):
             pred_score.append(score_flat[idx_sort])
         return pred_s, pred_e, pred_score
 
+    @staticmethod
+    def load(filename, new_args=None, normalize=True):
+        logger.info('Loading model %s' % filename)
+        saved_params = torch.load(
+            filename, map_location=lambda storage, loc: storage
+        )
+        word_dict = saved_params['word_dict']
+        feature_dict = saved_params['feature_dict']
+        state_dict = saved_params['state_dict']
+        args = saved_params['args']
+        # if new_args:
+        #     args = override_model_args(args, new_args)
+        return DocReader(args, word_dict, feature_dict, state_dict, normalize)
     # --------------------------------------------------------------------------
     # Saving and loading
     # --------------------------------------------------------------------------
