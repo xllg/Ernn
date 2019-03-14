@@ -1,6 +1,7 @@
-
 import argparse
+import logging
 
+logger = logging.getLogger(__name__)
 # Index of arguments concerning the core model architecture
 MODEL_ARCHITECTURE = {
     'model_type', 'embedding_dim', 'hidden_size', 'doc_layers',
@@ -101,3 +102,23 @@ def get_model_args(args):
     required_args = MODEL_ARCHITECTURE | MODEL_OPTIMIZER
     arg_values = {k: v for k, v in vars(args).items() if k in required_args}
     return argparse.Namespace(**arg_values)
+
+def override_model_args(old_args, new_args):
+    """Set args to new parameters.
+
+    Decide which model args to keep and which to override when resolving a set
+    of saved args and new args.
+
+    We keep the new optimation, but leave the model architecture alone.
+    """
+    global MODEL_OPTIMIZER
+    old_args, new_args = vars(old_args), vars(new_args)
+    for k in old_args.keys():
+        if k in new_args and old_args[k] != new_args[k]:
+            if k in MODEL_OPTIMIZER:
+                logger.info('Overriding saved %s: %s --> %s' %
+                            (k, old_args[k], new_args[k]))
+                old_args[k] = new_args[k]
+            else:
+                logger.info('Keeping saved %s: %s' % (k, old_args[k]))
+    return argparse.Namespace(**old_args)
