@@ -30,9 +30,9 @@ def add_model_args(parser):
                        help='Model architecture type')
     model.add_argument('--embedding-dim', type=int, default=300,
                        help='Embedding size if embedding_file is not given')
-    model.add_argument('--char-embedding-dim', type=int, default=16,
+    model.add_argument('--char-embedding-dim', type=int, default=18,
                        help='Embedding size if embedding_file is not given')
-    model.add_argument('--char-max-len', type=int, default=16,
+    model.add_argument('--char-max-len', type=int, default=17,
                        help='max length of word')
     model.add_argument('--char-out-dim', type=int, default=128,
                        help='Embedding size off charCNN')
