@@ -371,6 +371,7 @@ class DocReader(object):
             'state_dict': state_dict,
             'word_dict': self.word_dict,
             'feature_dict': self.feature_dict,
+            'char_dict': self.char_dict,
             'args': self.args,
         }
         try:
