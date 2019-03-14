@@ -53,7 +53,7 @@ parser.add_argument('--no-cuda', action='store_true',default=False,
                     help='Use CPU only')
 parser.add_argument('--gpu', type=int, default=-1,
                     help='Specify GPU device id to use')
-parser.add_argument('--batch-size', type=int, default=32,
+parser.add_argument('--batch-size', type=int, default=128,
                     help='Example batching size')
 parser.add_argument('--top-n', type=int, default=1,
                     help='Store top N predicted spans per example')
@@ -97,8 +97,6 @@ with open(args.dataset) as f:
 
 results = {}
 for i in tqdm(range(0, len(examples), args.batch_size)):
-# for i in range(0, len(examples), args.batch_size):
-#     logger.info('Batch=%d / %d', i/args.batch_size, len(examples)/args.batch_size)
     predictions = predictor.predict_batch(
         examples[i:i + args.batch_size], top_n=args.top_n
     )
@@ -114,8 +112,8 @@ for i in tqdm(range(0, len(examples), args.batch_size)):
 # model = os.path.splitext(os.path.basename(args.model or 'default'))[0]
 # basename = os.path.splitext(os.path.basename(args.dataset))[0]
 # outfile = os.path.join(args.out_dir, basename + '-' + model + '.preds')
-# outfile = os.path.join(args.outdir, 'predictions.json')
-outfile = args.outdir
+outfile = os.path.join(args.outdir, 'predictions.preds')
+
 logger.info('Writing results to %s' % outfile)
 with open(outfile, 'w') as f:
     json.dump(results, f)
