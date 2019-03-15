@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULTS = {
     'tokenizer': tokenizers.CoreNLPTokenizer,
-    'model': os.path.join(ErnnReader_DATA, 'outputs/20190208-8023.mdl'),
+    'model': os.path.join(ErnnReader_DATA, 'outputs/20190314-8027.mdl'),
 }
 
 # ------------------------------------------------------------------------------
@@ -50,7 +50,7 @@ def tokenize(text):
 
 
 class Predictor(object):
-    """Load a pretrained DocReader model and predict inputs on the fly."""
+    """Load a pretrained DocReader model and drqa_predict inputs on the fly."""
 
     def __init__(self, model=None, tokenizer=None, embedding_file=None, num_workers=None, normalize=True):
         """

@@ -29,7 +29,7 @@ fmt = logging.Formatter('%(asctime)s: [ %(message)s ]', '%m/%d/%Y %I:%M:%S %p')
 console = logging.StreamHandler()
 console.setFormatter(fmt)
 logger.addHandler(console)
-# python predict.py
+# python drqa_predict.py
 # /home/xllg/PycharmProjects/AttReader/data/datasets/SQuAD-v1.1-dev.json
 # /home/xllg/PycharmProjects/AttReader/data/outputs
 
@@ -41,7 +41,7 @@ parser.add_argument('--model', type=str, default=None,
 parser.add_argument('--embedding-file', type=str, default=None,
                     help=('Expand dictionary to use all pretrained '
                           'embeddings in this file.'))
-parser.add_argument('--outdir', type=str,default='/home/xllg/PycharmProjects/AttReader/data/predict',
+parser.add_argument('--outdir', type=str,default='/home/xllg/PycharmProjects/AttReader/data/drqa_up_predict',
                     help=('Directory to write prediction file to '
                           '(<dataset>-<model>.preds)'))
 parser.add_argument('--tokenizer', type=str, default=None,
