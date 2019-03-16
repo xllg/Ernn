@@ -58,8 +58,9 @@ def evaluate(dataset, predictions, al):
     for article in dataset:
         for paragraph in article['paragraphs']:
             for qa in paragraph['qas']:
-                ans = qa['answers'][0]['text'].split(' ')  # ans_len
-                if len(ans) == al:
+                # ans = qa['answers'][0]['text'].split(' ')  # ans_len
+                qes = qa['question'].split(' ')  # qes_len
+                if len(qes) == al:
                     total += 1
                     if qa['id'] not in predictions:
                         message = 'Unanswered question ' + qa['id'] + \
@@ -84,7 +85,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Evaluation for SQuAD ' + expected_version)
     parser.add_argument('--dataset_file', help='Dataset file', default='/home/xllg/PycharmProjects/AttReader/data/datasets/SQuAD-v1.1-dev.json')
-    parser.add_argument('--prediction_file', help='Prediction File', default='/home/xllg/PycharmProjects/AttReader/data/predict')
+    parser.add_argument('--prediction_file', help='Prediction File', default='/home/xllg/PycharmProjects/AttReader/data/drqa_predict')
     args = parser.parse_args()
     with open(args.dataset_file) as dataset_file:
         dataset_json = json.load(dataset_file)
@@ -94,8 +95,10 @@ if __name__ == '__main__':
                   file=sys.stderr)
         dataset = dataset_json['data']
     ans_len = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 29]
-    for al in ans_len:
-        outfile = os.path.join(args.prediction_file, 'ans-len' + str(al) + '.preds')
+    qes_len = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+               31, 33]
+    for al in qes_len:
+        outfile = os.path.join(args.prediction_file, 'qes-len' + str(al) + '.preds')
         with open(outfile) as prediction_file:
             predictions = json.load(prediction_file)
         print(json.dumps(evaluate(dataset, predictions, al)))
