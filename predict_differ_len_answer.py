@@ -74,20 +74,21 @@ if args.cuda:
 # ------------------------------------------------------------------------------
 
 # predict different length of answer
-ans_len=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 29]
-examples_all = [[] for i in range(len(ans_len))]
-qids = [[] for i in range(len(ans_len))]
+ans_len = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 29]
+qes_len = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 33]
+examples_all = [[] for i in range(len(qes_len))]
+qids = [[] for i in range(len(qes_len))]
 with open(args.dataset) as f:
     data = json.load(f)['data']
     for article in data:
         for paragraph in article['paragraphs']:
             context = paragraph['context']
             for qa in paragraph['qas']:
-                ans = qa['answers'][0]['text'].split(' ')  # ans_len
-                # if 3*(ans_len-1)<= len(ans) <= 3 * ans_len:  #
-                id = 27 if len(ans) == 29 else len(ans)
-                qids[id-1].append(qa['id'])
-                examples_all[id-1].append((context, qa['question']))
+                # ans = qa['answers'][0]['text'].split(' ')  # ans_len
+                qes = qa['question'].split(' ')  # qes_len
+                id = qes_len.index(len(qes))
+                qids[id].append(qa['id'])
+                examples_all[id].append((context, qa['question']))
 
 for num, examples in enumerate(examples_all):
     results = {}
@@ -108,7 +109,7 @@ for num, examples in enumerate(examples_all):
     # model = os.path.splitext(os.path.basename(args.model or 'default'))[0]
     # basename = os.path.splitext(os.path.basename(args.dataset))[0]
     # outfile = os.path.join(args.out_dir, basename + '-' + model + '.preds')
-    outfile = os.path.join(args.out_dir, 'ans-len'+str(ans_len[num])+'.preds')
+    outfile = os.path.join(args.out_dir, 'qes-len'+str(qes_len[num])+'.preds')
 
     logger.info('Writing results to %s' % outfile)
     with open(outfile, 'w') as f:
