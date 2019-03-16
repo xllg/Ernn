@@ -84,7 +84,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Evaluation for SQuAD ' + expected_version)
     parser.add_argument('--dataset_file', help='Dataset file', default='/home/xllg/PycharmProjects/AttReader/data/datasets/SQuAD-v1.1-dev.json')
-    parser.add_argument('--prediction_file', help='Prediction File', default='/home/xllg/PycharmProjects/AttReader/data/predict')
+    parser.add_argument('--prediction_file', help='Prediction File', default='/home/xllg/PycharmProjects/AttReader/data/drqa_up_predict')
     args = parser.parse_args()
     with open(args.dataset_file) as dataset_file:
         dataset_json = json.load(dataset_file)
