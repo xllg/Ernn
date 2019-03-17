@@ -58,12 +58,15 @@ def evaluate(dataset, predictions, al):
     for article in dataset:
         for paragraph in article['paragraphs']:
             context = paragraph['context']
-            text = context.split(' ')
-            if len(text) == al:
-                for qa in paragraph['qas']:
+            # text = context.split(' ')
+            # if len(text) == al:
+            for qa in paragraph['qas']:
                 # ans = qa['answers'][0]['text'].split(' ')  # ans_len
                 # qes = qa['question'].split(' ')  # qes_len
                 # if len(qes) == al:
+                text = qa["question"].split(' ')
+                qes_start = text[0].lower()
+                if qes_start == al:
                     total += 1
                     if qa['id'] not in predictions:
                         message = 'Unanswered question ' + qa['id'] + \
@@ -112,8 +115,9 @@ if __name__ == '__main__':
                231, 233, 236, 237, 240, 241, 243, 244, 245, 246, 247, 248, 249, 252, 253, 256, 257, 262, 263, 264, 266,
                267, 274, 276, 277, 278, 279, 283, 286, 293, 294, 296, 297, 302, 304, 312, 322, 324, 327, 333, 337, 340,
                349, 351, 353, 356, 359, 363, 388, 414, 448, 457, 629, 481, 483, 508, 509]
-    for al in pas_len:
-        outfile = os.path.join(args.prediction_file, 'pas-len' + str(al) + '.preds')
+    qes_type = ["why", "where", "which", "when", "who", "how", "what"]
+    for al in qes_type:
+        outfile = os.path.join(args.prediction_file, 'qes_type_' + al + '.preds')
         with open(outfile) as prediction_file:
             predictions = json.load(prediction_file)
         print(json.dumps(evaluate(dataset, predictions, al)))
