@@ -53,11 +53,11 @@ def add_model_args(parser):
                         help='The way of computing the question representation')
     detail.add_argument('--use-qemb', type='bool', default=True,
                         help='Whether to use weighted question embeddings')
-    detail.add_argument('--use-in-question', type='bool', default=True,
+    detail.add_argument('--use-in-question', type='bool', default=False,
                         help='Whether to use in_question_* features')
-    detail.add_argument('--use-pos', type='bool', default=True,
+    detail.add_argument('--use-pos', type='bool', default=False,
                         help='Whether to use pos features')
-    detail.add_argument('--use-ner', type='bool', default=True,
+    detail.add_argument('--use-ner', type='bool', default=False,
                         help='Whether to use ner features')
     detail.add_argument('--use-lemma', type='bool', default=True,
                         help='Whether to use lemma features')

@@ -21,14 +21,14 @@ class DocReader(object):
     # Initialization
     # ----------------------------------------------------------------------------
 
-    def __init__(self, args, word_dict, feature_dict, char_dict,
+    def __init__(self, args, word_dict, char_dict,
                  state_dict=None, normalize=True):
         # Book-keeping.
         self.args = args
         self.word_dict = word_dict
         self.args.vocab_size = len(word_dict)
-        self.feature_dict = feature_dict
-        self.args.num_features = len(feature_dict)
+        # self.feature_dict = feature_dict
+        # self.args.num_features = len(feature_dict)
         self.char_dict = char_dict
         self.args.char_size = len(char_dict)
         self.updates = 0
@@ -209,13 +209,13 @@ class DocReader(object):
         # Transfer to GPU
         if self.use_cuda:
             inputs = [e if e is None else Variable(e.cuda(async=True))
-                      for e in ex[:7]]
-            target_s = Variable(ex[7].cuda(async=True))
-            target_e = Variable(ex[8].cuda(async=True))
+                      for e in ex[:6]]
+            target_s = Variable(ex[6].cuda(async=True))
+            target_e = Variable(ex[7].cuda(async=True))
         else:
-            inputs = [e if e is None else Variable(e) for e in ex[:5]]
-            target_s = Variable(ex[7])
-            target_e = Variable(ex[8])
+            inputs = [e if e is None else Variable(e) for e in ex[:6]]
+            target_s = Variable(ex[6])
+            target_e = Variable(ex[7])
 
         # Run forward
         score_s, score_e = self.network(*inputs)  # batch_size * doc_max_len
