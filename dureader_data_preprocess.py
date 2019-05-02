@@ -49,7 +49,7 @@ parser.add_argument('--data_dir', type=str, help='Path to SQuAD data directory',
 parser.add_argument('--out_dir', type=str, help='Path to output file dir',
                     default='/home/xllg/PycharmProjects/AttReader/data/dureaderpre')
 parser.add_argument('--split', type=str, help='Filename for train/dev/test split',
-                    default='testset/search.train')
+                    default='trainset/search.train')
 args = parser.parse_args()
 
 in_file = os.path.join(args.data_dir, args.split + '.json')
@@ -64,9 +64,9 @@ with open(dataset_out_file, 'w') as fo:
     for item in dataset:
         fo.write(json.dumps(item, ensure_ascii=False) + '\n')  # dumps方法默认使用ASCII对中文进行编码，将其关闭
 
-print('Writing corpus!')
-with open(corpus_out_file, 'w') as fo:
-    for item in corpus:
-        fo.write(item + '\n')
+# print('Writing corpus!')
+# with open(corpus_out_file, 'w') as fo:
+#     for item in corpus:
+#         fo.write(item + '\n')
 
 print('Done!')

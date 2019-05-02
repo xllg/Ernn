@@ -84,7 +84,7 @@ def add_model_args(parser):
                        help='Momentum factor')
     optim.add_argument('--fix-embeddings', type='bool', default=True,
                        help='Keep word embeddings fixed (use pretrained)')
-    optim.add_argument('--tune-partial', type=int, default=1000,
+    optim.add_argument('--tune-partial', type=int, default=800,
                        help='Backprop through only the top N question words')
     optim.add_argument('--rnn-padding', type='bool', default=False,
                        help='Explicitly account for padding in RNN encoding')

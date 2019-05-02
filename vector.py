@@ -41,7 +41,7 @@ def vectorize(ex, model, single_answer=False):
         start = [a[0] for a in ex['answers']]
         end = [a[1] for a in ex['answers']]
 
-    return document, question, char_doc, char_qes, start, end, ex['id']
+    return document, question, char_doc, char_qes, start, end, ex['id'], ex['document']
 
 
 def batchify(batch):
@@ -52,9 +52,9 @@ def batchify(batch):
     """
     NUM_INPUTS = 4
     NUM_TARGETS = 2
-    NUM_EXTRA = 1
+    NUM_EXTRA = 2
 
-    ids = [ex[-1] for ex in batch]
+    ids = [ex[-2] for ex in batch]
     docs = [ex[0] for ex in batch]
     questions = [ex[1] for ex in batch]
     char_docs = [ex[2] for ex in batch]
@@ -96,4 +96,6 @@ def batchify(batch):
     else:
         raise RuntimeError('Incorrect number of inputs per example.')
 
-    return x1, x1_mask, x1_char, x2, x2_mask, x2_char, y_s, y_e, ids
+    documents = [ex[-1] for ex in batch]
+
+    return x1, x1_mask, x1_char, x2, x2_mask, x2_char, y_s, y_e, ids, documents

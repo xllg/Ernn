@@ -284,10 +284,10 @@ class DocReader(object):
         # Teansfer to GPU
         if self.use_cuda:
             inputs = [e if e is None else Variable(e.cuda(async=True), volatile=True)
-                      for e in ex[:7]]
+                      for e in ex[:6]]
         else:
             inputs = [e if e is None else Variable(e, volatile=True)
-                      for e in ex[:7]]
+                      for e in ex[:6]]
 
         # Run forward
         score_s, score_e = self.network(*inputs)
@@ -370,7 +370,7 @@ class DocReader(object):
         params = {
             'state_dict': state_dict,
             'word_dict': self.word_dict,
-            'feature_dict': self.feature_dict,
+            # 'feature_dict': self.feature_dict,
             'char_dict': self.char_dict,
             'args': self.args,
         }

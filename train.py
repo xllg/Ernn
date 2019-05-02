@@ -11,6 +11,9 @@ import torch
 
 from model import DocReader
 
+from bleu_metric.bleu import Bleu
+from rouge_metric.rouge import Rouge
+
 if sys.version_info < (3, 5):
     raise RuntimeError('ErnnReader_DATA supports Python 3.5 or higher.')
 
@@ -39,7 +42,7 @@ def add_train_args(parser):
 
     # Runtime environment
     runtime = parser.add_argument_group('Environment') # 添加命令行参数组
-    runtime.add_argument('-no-cuda', type='bool', default=True,
+    runtime.add_argument('-no-cuda', type='bool', default=False,
                          help='Train on CPU, even if GPUs are available.')
     runtime.add_argument('--gpu', type=int, default=-1,
                          help='Run on a specific GPU')
@@ -52,9 +55,9 @@ def add_train_args(parser):
                                'operations (for reproducibility)'))
     runtime.add_argument('--num-epochs', type=int, default=60,
                          help='Train data iterations')
-    runtime.add_argument('--batch-size', type=int, default=32,
+    runtime.add_argument('--batch-size', type=int, default=20,
                          help='Batch size for training')
-    runtime.add_argument('--test-batch-size', type=int, default=128,
+    runtime.add_argument('--test-batch-size', type=int, default=20,
                          help='Batch size during validation/testing')
 
     # Files
@@ -105,7 +108,7 @@ def add_train_args(parser):
     general = parser.add_argument_group('General')
     general.add_argument('--official-eval', type='bool', default=False,
                          help='Validate with official SQuAD eval')
-    general.add_argument('--valid-metric', type=str, default='f1',
+    general.add_argument('--valid-metric', type=str, default='Bleu-4',
                          help='The evaluation metric used for model selection')
     general.add_argument('--display-iter', type=int, default=25,
                          help='Log state after every <display_iter> epochs')
@@ -254,8 +257,8 @@ def validate_unofficial(args, data_loader, model, global_stats, mode):
     Unofficial = doesn't use SQuAD script.
     """
     eval_time = utils.Timer()
-    start_acc = utils.AverageMeter()
-    end_acc = utils.AverageMeter()
+    bleu = utils.AverageMeter()
+    rouge = utils.AverageMeter()
     exact_match = utils.AverageMeter()
 
     # MAke predictions
@@ -263,25 +266,68 @@ def validate_unofficial(args, data_loader, model, global_stats, mode):
     for ex in data_loader:
         batch_size = ex[0].size(0)
         pred_s, pred_e, _ = model.predict(ex)
-        target_s, target_e = ex[-3:-1]
+        target_s, target_e = ex[-4:-2]
+
+        pred_dict, ref_dict = {}, {}
+
+        for p_s, p_e, t_s, t_e, id, doc in zip(pred_s, pred_e, target_s, target_e, ex[-2], ex[-1]):
+            pred_dict[id] = normalize([''.join(doc[p_s[0]:p_e[0]])])
+            ref_dict[id] = normalize([''.join(doc[t_s:t_e])])
+
+        # pred_dict = {"185557": ['透 明 度 和 耐 磨 性 : P P S U 和 P A']}
+        # ref_dict = {"185557": ['透 明 度 和 耐 磨 性 : P P S U 和 P A']}
+
+        bleu_rouge = compute_bleu_rouge(pred_dict, ref_dict)
 
         # We get metrics for independent start/end and joint start/end
         accuracies = eval_accuracies(pred_s, target_s, pred_e, target_e)
-        start_acc.update(accuracies[0], batch_size)
-        end_acc.update(accuracies[1], batch_size)
+        bleu.update(bleu_rouge['Bleu-4'], batch_size)
+        rouge.update(bleu_rouge['Rouge-L'], batch_size)
         exact_match.update(accuracies[2], batch_size)
 
         # If getting train accuracies, sample max 10k
         examples += batch_size
         if mode == 'train' and examples >= 1e4:
             break
-    logger.info('%s valid unofficial: Epoch = %d | start = %.2f | ' %
-                (mode, global_stats['epoch'], start_acc.avg) +
-                'end = %.2f | exact = %.2f | examples = %d | ' %
-                (end_acc.avg, exact_match.avg, examples) +
+    logger.info('%s valid : Epoch = %d | Bleu-4 = %.2f | ' %
+                (mode, global_stats['epoch'], bleu.avg) +
+                'Rouge-L = %.2f | exact = %.2f | examples = %d | ' %
+                (rouge.avg, exact_match.avg, examples) +
                 'valid time = %.2f (s)' % eval_time.time())
 
-    return {'exact_match': exact_match.avg}
+    return {'exact_match': exact_match.avg, 'Bleu-4':bleu.avg, 'Rouge-L':rouge.avg}
+
+def compute_bleu_rouge(pred_dict, ref_dict, bleu_order=4):
+    """
+    Compute bleu and rouge scores.
+    """
+    assert set(pred_dict.keys()) == set(ref_dict.keys()), \
+            "missing keys: {}".format(set(ref_dict.keys()) - set(pred_dict.keys()))
+    scores = {}
+    bleu_scores, _ = Bleu(bleu_order).compute_score(ref_dict, pred_dict)
+    for i, bleu_score in enumerate(bleu_scores):
+        scores['Bleu-%d' % (i + 1)] = bleu_score
+    rouge_score, _ = Rouge().compute_score(ref_dict, pred_dict)
+    scores['Rouge-L'] = rouge_score
+    return scores
+
+def normalize(s):
+    """
+    Normalize strings to space joined chars.
+
+    Args:
+        s: a list of strings.
+
+    Returns:
+        A list of normalized strings.
+    """
+    if not s:
+        return s
+    normalized = []
+    for ss in s:
+        tokens = [c for c in list(ss) if len(c.strip()) != 0]
+        normalized.append(' '.join(tokens))
+    return normalized
 
 def validate_official(args, data_loader, model, gloable_stats, offsets, texts, answers):
     """
@@ -317,6 +363,7 @@ def validate_official(args, data_loader, model, gloable_stats, offsets, texts, a
                 'F1 = %.2f | examples = %d | valid time = %.2f (s)' %
                 (f1.avg * 100, examples, eval_time.time()))
     return {'exact_match': exact_match.avg * 100, 'f1': f1.avg * 100}
+
 
 def eval_accuracies(pred_s, target_s, pred_e, target_e):
     """
@@ -430,7 +477,7 @@ def main(args):
         collate_fn = vector.batchify, # 合并样本形成小批量
         pin_memory = args.cuda, # 如果为true，那么数据加载器将张量复制到cuda固定的内存中，然后再返回
     )
-    dev_dataset = data.ReaderDataset(dev_exs, model, single_answer=False)
+    dev_dataset = data.ReaderDataset(dev_exs, model, single_answer=True)
     if args.sort_by_len:
         dev_sampler = data.SortedBatchSampler(dev_dataset.lengths(),
                                               args.test_batch_size,
@@ -468,10 +515,6 @@ def main(args):
 
         # Validate unofficial (dev)
         result = validate_unofficial(args, dev_loader, model, stats, mode='dev')
-
-        # Validate official
-        if args.official_eval:
-            result = validate_official(args, dev_loader, model, stats, dev_offsets, dev_texts, dev_answers)
 
         # Save best valid
         if result[args.valid_metric] > stats['best_valid']:
