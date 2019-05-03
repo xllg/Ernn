@@ -79,9 +79,9 @@ class DocReader(object):
                         vec_counts[w] = 1
                         embedding[self.word_dict[w]].copy_(vec)
                     else:
-                        logging.warning(
-                            'WARN: Duplicate embedding found for %s' % w
-                        )
+                        # logging.warning(
+                        #     'WARN: Duplicate embedding found for %s' % w
+                        # )
                         vec_counts[w] = vec_counts[w] + 1
                         embedding[self.word_dict[w]].add_(vec)
 

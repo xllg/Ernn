@@ -19,9 +19,21 @@ def process_dataset(in_path):
             sample = json.loads(line.strip())
             if len(sample['answer_spans']) == 0:
                 continue
+            if sample['answer_spans'][0][1] >= 600:
+                continue
+            # answer = sample['answer_spans'][0]
+
+            # if (answer[1] - answer[0] + 1) > 200:
+            #     s = answer[0]
+            #     e = answer[0] + 199
+            # else:
+            #     s = answer[0]
+            #     e = answer[1]
+
+            # sample['answer_spans'] = [[s, e]]
 
             id = sample['question_id']
-            question = sample['segmented_question']
+            question = sample['segmented_question'][:60]
             # 寻找最相关的文本片段
             answer_doc = sample['answer_docs'][0]
             if answer_doc < len(sample['documents']):
@@ -29,8 +41,10 @@ def process_dataset(in_path):
             else:
                 doc = sample['documents'][-1]
             most_related_para = doc['most_related_para']
-            document = doc['segmented_paragraphs'][most_related_para]
+            document = doc['segmented_paragraphs'][most_related_para][:600]
             answers = sample['answer_spans']
+            if answers[0][1] > len(document):
+                answers[0][1] = len(document) - 1
 
             ex_dataset = {
                 'id': id,

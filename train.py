@@ -55,9 +55,9 @@ def add_train_args(parser):
                                'operations (for reproducibility)'))
     runtime.add_argument('--num-epochs', type=int, default=60,
                          help='Train data iterations')
-    runtime.add_argument('--batch-size', type=int, default=20,
+    runtime.add_argument('--batch-size', type=int, default=48,
                          help='Batch size for training')
-    runtime.add_argument('--test-batch-size', type=int, default=20,
+    runtime.add_argument('--test-batch-size', type=int, default=128,
                          help='Batch size during validation/testing')
 
     # Files
