@@ -55,7 +55,7 @@ def add_train_args(parser):
                                'operations (for reproducibility)'))
     runtime.add_argument('--num-epochs', type=int, default=60,
                          help='Train data iterations')
-    runtime.add_argument('--batch-size', type=int, default=88,
+    runtime.add_argument('--batch-size', type=int, default=128,
                          help='Batch size for training')
     runtime.add_argument('--test-batch-size', type=int, default=128,
                          help='Batch size during validation/testing')
@@ -69,10 +69,10 @@ def add_train_args(parser):
     files.add_argument('--data-dir', type=str, default=DATA_DIR,
                        help='Directory of training/validation data')
     files.add_argument('--train-file', type=str,
-                       default='train.processed.dataset.txt',
+                       default='zhidao.train-processd_dataset.txt',
                        help='Preprocessed train file')
     files.add_argument('--dev-file', type=str,
-                       default='dev.processed.dataset.txt',
+                       default='zhidao.dev-processd_dataset.txt',
                        help='Preprocessed dev file')
     files.add_argument('--dev-json', type=str, default='SQuAD-v1.1-dev.json',
                        help=('Unprocessed dev file to run validation '

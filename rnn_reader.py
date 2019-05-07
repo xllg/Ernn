@@ -30,11 +30,11 @@ class RnnDocReader(nn.Module):
         # Projection for attention weighted question
         if args.use_qemb:
             self.seq_match = layers.SeqAttnMatch(args.embedding_dim)
-        # self.charCNN = layers.CharCNN(args.char_embedding_dim, args.char_max_len, args.char_out_dim)
+        self.charCNN = layers.CharCNN(args.char_embedding_dim, args.char_max_len, args.char_out_dim)
 
         # Input size to RNN: word emb + char emb
-        # doc_input_size = args.embedding_dim + args.char_out_dim
-        doc_input_size = args.embedding_dim
+        doc_input_size = args.embedding_dim + args.char_out_dim
+        # doc_input_size = args.embedding_dim
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
@@ -122,7 +122,7 @@ class RnnDocReader(nn.Module):
         x1_emb = self.embedding(x1)
         x2_emb = self.embedding(x2)
 
-        # x1_char_emb = self.char_embedding(x1_char.view(-1, x1_char.size(-1)))
+        x1_char_emb = self.char_embedding(x1_char.view(-1, x1_char.size(-1)))
 
         #x2_char_emb = self.char_embedding(x2_char.view(-1, x2_char.size(-1)))
         #x2_char_emb = self.charCNN(x2_char_emb).view(x2.size(0), -1, self.args.embedding_dim)
@@ -133,15 +133,15 @@ class RnnDocReader(nn.Module):
                                            training=self.training)
             x2_emb = nn.functional.dropout(x2_emb, p=self.args.dropout_emb,
                                            training=self.training)
-            # x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
-            #                                training=self.training)
+            x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
+                                           training=self.training)
             # x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
             #                                training=self.training)
 
-        # x1_char_emb = self.charCNN(x1_char_emb).view(x1.size(0), x1.size(1), -1)
+        x1_char_emb = self.charCNN(x1_char_emb).view(x1.size(0), x1.size(1), -1)
         # Form document encoding inputs
-        # drnn_input = [x1_emb, x1_char_emb]
-        drnn_input = [x1_emb]
+        drnn_input = [x1_emb, x1_char_emb]
+        # drnn_input = [x1_emb]
 
         # Add attention-weighted question representation
         if self.args.use_qemb:
