@@ -39,12 +39,15 @@ def process_dataset(in_path):
             if answer_doc < len(sample['documents']):
                 doc = sample['documents'][answer_doc]
             else:
-                doc = sample['documents'][-1]
+                continue
+                # doc = sample['documents'][-1]
             most_related_para = doc['most_related_para']
             document = doc['segmented_paragraphs'][most_related_para][:600]
             answers = sample['answer_spans']
-            if answers[0][1] > len(document):
-                answers[0][1] = len(document) - 1
+            if answers[0][1] >= len(document):
+                continue
+                # print(id)
+                # answers[0][1] = len(document) - 1
 
             ex_dataset = {
                 'id': id,
@@ -63,7 +66,7 @@ parser.add_argument('--data_dir', type=str, help='Path to SQuAD data directory',
 parser.add_argument('--out_dir', type=str, help='Path to output file dir',
                     default='/home/xllg/PycharmProjects/AttReader/data/dureaderpre')
 parser.add_argument('--split', type=str, help='Filename for train/dev/test split',
-                    default='trainset/search.train')
+                    default='trainset/zhidao.train')
 args = parser.parse_args()
 
 in_file = os.path.join(args.data_dir, args.split + '.json')

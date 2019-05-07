@@ -55,7 +55,7 @@ def add_train_args(parser):
                                'operations (for reproducibility)'))
     runtime.add_argument('--num-epochs', type=int, default=60,
                          help='Train data iterations')
-    runtime.add_argument('--batch-size', type=int, default=48,
+    runtime.add_argument('--batch-size', type=int, default=88,
                          help='Batch size for training')
     runtime.add_argument('--test-batch-size', type=int, default=128,
                          help='Batch size during validation/testing')
@@ -69,10 +69,10 @@ def add_train_args(parser):
     files.add_argument('--data-dir', type=str, default=DATA_DIR,
                        help='Directory of training/validation data')
     files.add_argument('--train-file', type=str,
-                       default='search.train-processd_dataset.txt',
+                       default='train.processed.dataset.txt',
                        help='Preprocessed train file')
     files.add_argument('--dev-file', type=str,
-                       default='search.dev-processd_dataset.txt',
+                       default='dev.processed.dataset.txt',
                        help='Preprocessed dev file')
     files.add_argument('--dev-json', type=str, default='SQuAD-v1.1-dev.json',
                        help=('Unprocessed dev file to run validation '
@@ -229,6 +229,8 @@ def train(args, data_loader, model, global_stats):
 
     # Run one epoch
     for idx, ex in enumerate(data_loader):
+        # if idx == 113:
+        #     print("23")
         train_loss.update(*model.update(ex))
         if idx % args.display_iter == 0:
             logger.info('train: Epoch = %d | iter = %d/%d | ' %
@@ -564,11 +566,11 @@ if __name__=='__main__': # 如果模块是被直接运行的，则代码块被�
     logger.info('COMMAND: %s' % ' '.join(sys.argv))
 
     # Run!
-    # os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
-    # memory_gpu = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
-    # while memory_gpu[0] < 6000:
-    #     os.system('rm tmp')
-    #     os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
-    #     memory_gpu = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
+    os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
+    memory_gpu = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
+    while memory_gpu[0] < 6000:
+        os.system('rm tmp')
+        os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
+        memory_gpu = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
     #     print("Wating GPU!")
     main(args)

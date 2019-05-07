@@ -30,10 +30,11 @@ class RnnDocReader(nn.Module):
         # Projection for attention weighted question
         if args.use_qemb:
             self.seq_match = layers.SeqAttnMatch(args.embedding_dim)
-        self.charCNN = layers.CharCNN(args.char_embedding_dim, args.char_max_len, args.char_out_dim)
+        # self.charCNN = layers.CharCNN(args.char_embedding_dim, args.char_max_len, args.char_out_dim)
 
         # Input size to RNN: word emb + char emb
-        doc_input_size = args.embedding_dim + args.char_out_dim
+        # doc_input_size = args.embedding_dim + args.char_out_dim
+        doc_input_size = args.embedding_dim
         if args.use_qemb:
             doc_input_size += args.embedding_dim
 
@@ -121,7 +122,7 @@ class RnnDocReader(nn.Module):
         x1_emb = self.embedding(x1)
         x2_emb = self.embedding(x2)
 
-        x1_char_emb = self.char_embedding(x1_char.view(-1, x1_char.size(-1)))
+        # x1_char_emb = self.char_embedding(x1_char.view(-1, x1_char.size(-1)))
 
         #x2_char_emb = self.char_embedding(x2_char.view(-1, x2_char.size(-1)))
         #x2_char_emb = self.charCNN(x2_char_emb).view(x2.size(0), -1, self.args.embedding_dim)
@@ -132,14 +133,15 @@ class RnnDocReader(nn.Module):
                                            training=self.training)
             x2_emb = nn.functional.dropout(x2_emb, p=self.args.dropout_emb,
                                            training=self.training)
-            x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
-                                           training=self.training)
+            # x1_char_emb = nn.functional.dropout(x1_char_emb, p=self.args.dropout_emb,
+            #                                training=self.training)
             # x2_char_emb = nn.functional.dropout(x2_char_emb, p=self.args.dropout_emb,
             #                                training=self.training)
 
-        x1_char_emb = self.charCNN(x1_char_emb).view(x1.size(0), x1.size(1), -1)
+        # x1_char_emb = self.charCNN(x1_char_emb).view(x1.size(0), x1.size(1), -1)
         # Form document encoding inputs
-        drnn_input = [x1_emb, x1_char_emb]
+        # drnn_input = [x1_emb, x1_char_emb]
+        drnn_input = [x1_emb]
 
         # Add attention-weighted question representation
         if self.args.use_qemb:
@@ -157,19 +159,19 @@ class RnnDocReader(nn.Module):
         # Encode question with RNN + merge hiddens
         question_hiddens = self.question_rnn(torch.cat([x2_emb, x1_weighted_emb], 2), x2_mask)
 
-        gated_q2p_ct = self.qes_gated(doc_hiddens, question_hiddens, x2_mask)
-        gated_q2p_vp = self.gated_qes_rnn(gated_q2p_ct, x1_mask)
-
-        gated_p2q_ct = self.doc_gated(question_hiddens, doc_hiddens, x1_mask)
-        gated_p2q_vp = self.gated_doc_rnn(gated_p2q_ct, x2_mask)
+        # gated_q2p_ct = self.qes_gated(doc_hiddens, question_hiddens, x2_mask)
+        # gated_q2p_vp = self.gated_qes_rnn(gated_q2p_ct, x1_mask)
+        #
+        # gated_p2q_ct = self.doc_gated(question_hiddens, doc_hiddens, x1_mask)
+        # gated_p2q_vp = self.gated_doc_rnn(gated_p2q_ct, x2_mask)
 
         if self.args.question_merge == 'avg':
             q_merge_weights = layers.uniform_weights(question_hiddens, x2_mask)
         elif self.args.question_merge == 'self_attn':
-            q_merge_weights = self.qes_self_attn(gated_p2q_vp, x2_mask)
-        question_hidden = layers.weighted_avg(gated_p2q_vp, q_merge_weights)
+            q_merge_weights = self.qes_self_attn(question_hiddens, x2_mask)
+        question_hidden = layers.weighted_avg(question_hiddens, q_merge_weights)
 
         # Predict start and end positions
-        start_scores = self.start_attn(gated_q2p_vp, question_hidden, x1_mask)
-        end_scores = self.end_attn(gated_q2p_vp, question_hidden, x1_mask)
+        start_scores = self.start_attn(doc_hiddens, question_hidden, x1_mask)
+        end_scores = self.end_attn(doc_hiddens, question_hidden, x1_mask)
         return start_scores, end_scores
