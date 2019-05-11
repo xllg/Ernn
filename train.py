@@ -55,7 +55,7 @@ def add_train_args(parser):
                                'operations (for reproducibility)'))
     runtime.add_argument('--num-epochs', type=int, default=60,
                          help='Train data iterations')
-    runtime.add_argument('--batch-size', type=int, default=128,
+    runtime.add_argument('--batch-size', type=int, default=80,
                          help='Batch size for training')
     runtime.add_argument('--test-batch-size', type=int, default=128,
                          help='Batch size during validation/testing')
@@ -291,9 +291,9 @@ def validate_unofficial(args, data_loader, model, global_stats, mode):
         examples += batch_size
         if mode == 'train' and examples >= 1e4:
             break
-    logger.info('%s valid : Epoch = %d | Bleu-4 = %.2f | ' %
+    logger.info('%s valid : Epoch = %d | Bleu-4 = %.3f | ' %
                 (mode, global_stats['epoch'], bleu.avg) +
-                'Rouge-L = %.2f | exact = %.2f | examples = %d | ' %
+                'Rouge-L = %.3f | exact = %.2f | examples = %d | ' %
                 (rouge.avg, exact_match.avg, examples) +
                 'valid time = %.2f (s)' % eval_time.time())
 

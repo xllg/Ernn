@@ -34,7 +34,7 @@ def add_model_args(parser):
                        help='Embedding size if embedding_file is not given')
     model.add_argument('--char-max-len', type=int, default=4,
                        help='max length of word')
-    model.add_argument('--char-out-dim', type=int, default=128,
+    model.add_argument('--char-out-dim', type=int, default=32,
                        help='Embedding size off charCNN')
     model.add_argument('--hidden-size', type=int, default=128,
                        help='Hidden size of RNN units')
