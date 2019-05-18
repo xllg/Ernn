@@ -214,7 +214,7 @@ class CharCNN(nn.Module):
         super(CharCNN, self).__init__()
         self.in_emb_dim = in_emb_dim # 100
         self.out_emb_dim = out_emb_dim
-        self.kernel_sizes = [1, 3, 7, 9, 11, 15, 17] # kenel_size jishu
+        self.kernel_sizes = [1, 3, 5, 7, 9, 11, 13, 15, 17] # kenel_size jishu
         D = self.in_emb_dim
         self.convolutions = []
         for K in self.kernel_sizes:
@@ -239,8 +239,9 @@ class CharCNN(nn.Module):
         for i in range(len(self.convolutions)):
             convolved = self.convolutions[i](character_embedding)
             # (batch_size * sequence_length, n_filters for this width)
-            # convolved, _ = torch.max(convolved, dim=-1)
-            convolved = F.relu(convolved).squeeze(3)
+            convolved, _ = torch.max(convolved, dim=-1)
+            # convolved = F.relu(convolved).squeeze(3)
+            convolved = F.relu(convolved)
             convs.append(convolved)
         char_emb = torch.cat(convs, dim=1)
         # Highway:  y = H(x, W) * T(x, W) + x * (1 - T(x, W))
@@ -249,17 +250,20 @@ class CharCNN(nn.Module):
 
         normal_fc = torch.transpose(char_emb, 1, 2) # in the formula is the H
 
-        information_source = self.gate_layer(input)
-        transformation_layer = F.tanh(information_source) # in the formula is the T
-        allow_transformation = torch.mul(normal_fc, transformation_layer) # in the formula is the H * T
+        # information_source = self.gate_layer(input)
+        # transformation_layer = F.tanh(information_source) # in the formula is the T
+        # allow_transformation = torch.mul(normal_fc, transformation_layer) # in the formula is the H * T
+        # 
+        # carry_layer = 1 - transformation_layer # in the formula is the (1 - T)
+        # allow_carry = torch.mul(information_source, carry_layer) # in the formula is the x * (1 - T(x, W))
+        # information_flow = torch.add(allow_transformation, allow_carry)
+        # 
+        # information_flow = information_flow.view(information_flow.size(0), -1)
+        # information_convert = F.relu(self.fc1(information_flow))
 
-        carry_layer = 1 - transformation_layer # in the formula is the (1 - T)
-        allow_carry = torch.mul(information_source, carry_layer) # in the formula is the x * (1 - T(x, W))
-        information_flow = torch.add(allow_transformation, allow_carry)
-
-        information_flow = information_flow.view(information_flow.size(0), -1)
-        information_convert = F.relu(self.fc1(information_flow))
-        # information_convert, _ = torch.max(information_convert.transpose(1, 2), dim=-1)
+        normal_fc = normal_fc.contiguous().view(normal_fc.size(0), -1)
+        information_convert = F.relu(self.fc1(normal_fc))
+        # information_convert = F.relu(self.fc1(normal_fc.view(normal_fc.size(0), -1)))
         return information_convert
 
 class LinearGated(nn.Module):

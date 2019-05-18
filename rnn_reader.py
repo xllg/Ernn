@@ -157,19 +157,19 @@ class RnnDocReader(nn.Module):
         # Encode question with RNN + merge hiddens
         question_hiddens = self.question_rnn(torch.cat([x2_emb, x1_weighted_emb], 2), x2_mask)
 
-        gated_q2p_ct = self.qes_gated(doc_hiddens, question_hiddens, x2_mask)
-        gated_q2p_vp = self.gated_qes_rnn(gated_q2p_ct, x1_mask)
-
-        gated_p2q_ct = self.doc_gated(question_hiddens, doc_hiddens, x1_mask)
-        gated_p2q_vp = self.gated_doc_rnn(gated_p2q_ct, x2_mask)
+        # gated_q2p_ct = self.qes_gated(doc_hiddens, question_hiddens, x2_mask)
+        # gated_q2p_vp = self.gated_qes_rnn(gated_q2p_ct, x1_mask)
+        #
+        # gated_p2q_ct = self.doc_gated(question_hiddens, doc_hiddens, x1_mask)
+        # gated_p2q_vp = self.gated_doc_rnn(gated_p2q_ct, x2_mask)
 
         if self.args.question_merge == 'avg':
             q_merge_weights = layers.uniform_weights(question_hiddens, x2_mask)
         elif self.args.question_merge == 'self_attn':
-            q_merge_weights = self.qes_self_attn(gated_p2q_vp, x2_mask)
-        question_hidden = layers.weighted_avg(gated_p2q_vp, q_merge_weights)
+            q_merge_weights = self.qes_self_attn(question_hiddens, x2_mask)
+        question_hidden = layers.weighted_avg(question_hiddens, q_merge_weights)
 
         # Predict start and end positions
-        start_scores = self.start_attn(gated_q2p_vp, question_hidden, x1_mask)
-        end_scores = self.end_attn(gated_q2p_vp, question_hidden, x1_mask)
+        start_scores = self.start_attn(doc_hiddens, question_hidden, x1_mask)
+        end_scores = self.end_attn(doc_hiddens, question_hidden, x1_mask)
         return start_scores, end_scores
