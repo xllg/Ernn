@@ -250,19 +250,19 @@ class CharCNN(nn.Module):
 
         normal_fc = torch.transpose(char_emb, 1, 2) # in the formula is the H
 
-        # information_source = self.gate_layer(input)
-        # transformation_layer = F.tanh(information_source) # in the formula is the T
-        # allow_transformation = torch.mul(normal_fc, transformation_layer) # in the formula is the H * T
-        # 
-        # carry_layer = 1 - transformation_layer # in the formula is the (1 - T)
-        # allow_carry = torch.mul(information_source, carry_layer) # in the formula is the x * (1 - T(x, W))
-        # information_flow = torch.add(allow_transformation, allow_carry)
-        # 
-        # information_flow = information_flow.view(information_flow.size(0), -1)
-        # information_convert = F.relu(self.fc1(information_flow))
+        information_source = self.gate_layer(input)
+        transformation_layer = F.tanh(information_source) # in the formula is the T
+        allow_transformation = torch.mul(normal_fc, transformation_layer) # in the formula is the H * T
 
-        normal_fc = normal_fc.contiguous().view(normal_fc.size(0), -1)
-        information_convert = F.relu(self.fc1(normal_fc))
+        carry_layer = 1 - transformation_layer # in the formula is the (1 - T)
+        allow_carry = torch.mul(information_source, carry_layer) # in the formula is the x * (1 - T(x, W))
+        information_flow = torch.add(allow_transformation, allow_carry)
+
+        information_flow = information_flow.view(information_flow.size(0), -1)
+        information_convert = F.relu(self.fc1(information_flow))
+
+        # normal_fc = normal_fc.contiguous().view(normal_fc.size(0), -1)
+        # information_convert = F.relu(self.fc1(normal_fc))
         # information_convert = F.relu(self.fc1(normal_fc.view(normal_fc.size(0), -1)))
         return information_convert
 
