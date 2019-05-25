@@ -519,7 +519,7 @@ if __name__=='__main__': # 如果模块是被直接运行的，则代码块被�
         logfile.setFormatter(fmt)
         logger.addHandler(logfile)
     logger.info('COMMAND: %s' % ' '.join(sys.argv))
-    logger.info('No Highway [1, 3, 5, 7, 9, 11, 13, 15, 17]')
+    logger.info('Highway [1, 3, 5, 7, 9, 11, 13, 15, 17]')
     # Run!
     os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
     memory_gpu = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
